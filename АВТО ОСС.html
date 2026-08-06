@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Проведение ОСС и подсчет бюллетеней</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --warning: #c27803;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #046c4e; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #9b1c1c; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f9fafb; }
+    nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      display: flex; gap: 4px; overflow-x: auto;
+    }
+    nav button {
+      padding: 12px 18px; border: none; background: none;
+      font-size: 0.9rem; font-weight: 500; color: var(--muted);
+      cursor: pointer; border-bottom: 3px solid transparent;
+      white-space: nowrap; transition: color .15s, border-color .15s;
+    }
+    nav button:hover { color: var(--text); }
+    nav button.active {
+      color: var(--primary); border-bottom-color: var(--primary);
+    }
+    main { flex: 1; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px;
+    }
+    .card h2 { font-size: 1.1rem; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .card h3 { font-size: 1rem; margin: 16px 0 10px; color: var(--muted); }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px; margin-bottom: 14px;
+    }
+    label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    textarea { min-height: 100px; resize: vertical; font-family: inherit; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 0.875rem;
+    }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: #f9fafb; font-weight: 600; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: .03em; }
+    tr:hover td { background: #f9fafb; }
+    .badge {
+      display: inline-block; padding: 3px 8px; border-radius: 999px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-success { background: #def7ec; color: var(--success); }
+    .badge-danger { background: #fde8e8; color: var(--danger); }
+    .badge-warning { background: #fef3c7; color: var(--warning); }
+    .badge-info { background: #e1effe; color: var(--primary); }
+    .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .empty {
+      text-align: center; padding: 40px 20px; color: var(--muted);
+    }
+    .empty svg { width: 48px; height: 48px; margin-bottom: 12px; opacity: .4; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 16px; opacity: 0; visibility: hidden;
+      transition: opacity .2s, visibility .2s;
+    }
+    .modal-overlay.show { opacity: 1; visibility: visible; }
+    .modal {
+      background: #fff; border-radius: 12px; width: 100%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto; padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.2);
+    }
+    .modal h3 { margin-bottom: 16px; font-size: 1.15rem; }
+    .modal .actions-row { justify-content: flex-end; margin-top: 20px; }
+    .status-bar {
+      font-size: 0.8rem; color: var(--muted); padding: 8px 24px;
+      background: #fff; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    }
+    .report {
+      background: #fff; padding: 24px; border-radius: var(--radius);
+      font-size: 0.95rem; line-height: 1.6;
+    }
+    .report h2 { text-align: center; margin-bottom: 8px; }
+    .report .meta { text-align: center; color: var(--muted); margin-bottom: 20px; }
+    .report .stat { margin: 12px 0; padding: 12px; background: #f9fafb; border-radius: 8px; }
+    .report .question { margin: 20px 0; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    .report .result-accepted { color: var(--success); font-weight: 700; }
+    .report .result-rejected { color: var(--danger); font-weight: 700; }
+    .ballot-answers { display: flex; flex-direction: column; gap: 10px; }
+    .ballot-q {
+      padding: 12px; background: #f9fafb; border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: background .15s, border-color .15s;
+    }
+    .ballot-q.ans-za {
+      background: #d1fae5;
+      border-color: #6ee7b7;
+    }
+    .ballot-q.ans-protiv {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+    .ballot-q.ans-vozder {
+      background: #fef9c3;
+      border-color: #fde047;
+    }
+    .ballot-q > label.q-text { font-weight: 500; color: var(--text); margin-bottom: 8px; display: block; }
+    .ballot-answers.compact .ballot-q { padding: 8px 10px; }
+    .ballot-answers.compact .ballot-q > label.q-text {
+      font-size: 0.8rem; font-weight: 500; line-height: 1.35;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+      overflow: hidden; margin-bottom: 6px;
+    }
+    .ballot-answers.compact .ballot-q .q-resolution { display: none; }
+    .voting-questions-wrap { margin-top: 12px; }
+    .voting-questions-wrap.collapsed .voting-questions-body { display: none; }
+    .voting-toggle-btn { font-size: 0.8rem; }
+    .radio-group { display: flex; gap: 16px; flex-wrap: wrap; }
+    .radio-group label { display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer; margin-bottom: 0; }
+    .radio-group input { width: auto; }
+    .owner-search-dropdown {
+      position: absolute; left: 0; right: 0; top: 100%; z-index: 50;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 240px; overflow-y: auto;
+      margin-top: 4px;
+    }
+    .owner-search-dropdown .owner-opt {
+      padding: 8px 12px; cursor: pointer; font-size: 0.85rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .owner-search-dropdown .owner-opt:last-child { border-bottom: none; }
+    .owner-search-dropdown .owner-opt:hover,
+    .owner-search-dropdown .owner-opt.active { background: #eff6ff; }
+    .owner-search-dropdown .owner-opt-empty {
+      padding: 10px 12px; color: var(--muted); font-size: 0.85rem;
+    }
+    .doc-actions {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;
+    }
+    .doc-menu {
+      position: relative; display: inline-block;
+    }
+    .doc-menu > summary {
+      list-style: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px; font-size: 0.875rem; font-weight: 500;
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+      user-select: none;
+    }
+    .doc-menu > summary::-webkit-details-marker { display: none; }
+    .doc-menu > summary:hover { background: #f9fafb; }
+    .doc-menu[open] > summary { border-color: var(--primary); color: var(--primary); }
+    .doc-menu-primary > summary {
+      background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .doc-menu-primary > summary:hover { background: var(--primary-hover); color: #fff; }
+    .doc-menu-panel {
+      position: absolute; left: 0; top: calc(100% + 4px); z-index: 40;
+      min-width: 220px; background: #fff; border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 6px;
+    }
+    .doc-menu-panel button {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 12px; border: none; background: none; border-radius: 6px;
+      font-size: 0.85rem; cursor: pointer; color: var(--text);
+    }
+    .doc-menu-panel button:hover { background: #eff6ff; color: var(--primary); }
+    .help-card { margin-bottom: 16px; }
+    .help-card h2 { margin-bottom: 10px; }
+    .help-card p, .help-card li { line-height: 1.55; color: var(--text); }
+    .help-card ul, .help-card ol { margin: 8px 0 0 1.2em; padding: 0; }
+    .help-card li { margin: 6px 0; }
+    .help-steps > li { margin-bottom: 14px; }
+    .help-steps ul { margin-top: 6px; }
+    .help-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 8px; }
+    .help-table th, .help-table td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+    .help-table th { background: #f3f4f6; font-weight: 600; }
+    .print-only { display: none; }
+    @media print {
+      body * { visibility: hidden; }
+      .print-area, .print-area * { visibility: visible; }
+      .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+      .print-only { display: block; }
+      nav, header, .status-bar { display: none !important; }
+      .report { box-shadow: none; padding: 0; }
+    }
+    .owner-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .owner-row input { flex: 1; min-width: 120px; }
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; background: #111827; color: #fff;
+      padding: 12px 20px; border-radius: 8px; font-size: 0.875rem;
+      z-index: 2000; opacity: 0; transform: translateY(12px);
+      transition: opacity .25s, transform .25s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .select-full { width: 100%; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="no-print">
+      <h1>📋 Проведение ОСС и подсчет бюллетеней</h1>
+      <div class="actions">
+        <button class="btn btn-outline" onclick="createNewDb()">Новая БД</button>
+        <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Загрузить JSON</button>
+        <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJson(event)">
+        <button class="btn btn-outline" onclick="saveJson()">Сохранить JSON</button>
+      </div>
+    </header>
+
+    <nav class="no-print">
+      <button class="tab-btn active" data-tab="houses">Дома и собственники</button>
+      <button class="tab-btn" data-tab="votings">Голосования</button>
+      <button class="tab-btn" data-tab="templates">Шаблоны вопросов</button>
+      <button class="tab-btn" data-tab="ballots">Бюллетени</button>
+      <button class="tab-btn" data-tab="reports">Отчёты и печать</button>
+      <button class="tab-btn" data-tab="help">Помощь</button>
+    </nav>
+
+    <main>
+      <!-- ============ HOUSES ============ -->
+      <div id="panel-houses" class="panel active">
+        <div class="card">
+          <h2>
+            <span>Дома</span>
+            <button class="btn btn-primary btn-sm" onclick="openHouseModal()">+ Добавить дом</button>
+          </h2>
+          <div id="housesList"></div>
+        </div>
+      </div>
+
+      <!-- ============ VOTINGS ============ -->
+      <div id="panel-votings" class="panel">
+        <div class="card">
+          <h2>
+            <span>Голосования</span>
+            <button class="btn btn-primary btn-sm" onclick="openVotingModal()">+ Создать голосование</button>
+          </h2>
+          <div id="votingsList"></div>
+        </div>
+      </div>
+
+      <!-- ============ TEMPLATES ============ -->
+      <div id="panel-templates" class="panel">
+        <div class="card">
+          <h2>
+            <span>Шаблоны вопросов</span>
+            <button class="btn btn-primary btn-sm" onclick="openTemplateModal()">+ Шаблон</button>
+          </h2>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">
+            Шаблоны можно повторно подставлять в любые голосования. Редактирование шаблона не меняет уже добавленные в голосования вопросы.
+          </p>
+          <div id="templatesList"></div>
+        </div>
+      </div>
+
+      <!-- ============ BALLOTS ============ -->
+      <div id="panel-ballots" class="panel">
+        <div class="card">
+          <h2 class="flex-between">
+            <span>Ввод бюллетеней</span>
+            <button class="btn btn-ghost btn-sm" id="ballotTextSizeBtn" onclick="toggleBallotTextSize()">Уменьшить размер текста вопроса</button>
+          </h2>
+          <div class="form-grid">
+            <div>
+              <label>Голосование</label>
+              <select id="ballotVotingSelect" class="select-full" onchange="onBallotVotingChange()">
+                <option value="">— выберите —</option>
+              </select>
+            </div>
+            <div>
+              <label>Сортировка собственников</label>
+              <select id="ballotOwnerSort" class="select-full" onchange="onBallotVotingChange()">
+                <option value="name">По ФИО</option>
+                <option value="apartment">По квартире</option>
+                <option value="area">По площади (убыв.)</option>
+                <option value="area_asc">По площади (возр.)</option>
+              </select>
+            </div>
+            <div style="position:relative">
+              <label>Поиск собственника</label>
+              <input type="search" id="ballotOwnerSearch" class="select-full" placeholder="Квартира, ФИО…"
+                oninput="filterBallotOwners()"
+                onfocus="filterBallotOwners()"
+                autocomplete="off">
+              <div id="ballotOwnerDropdown" class="owner-search-dropdown" style="display:none"></div>
+            </div>
+            <div>
+              <label>Собственник (кв. · ФИО · площадь)</label>
+              <select id="ballotOwnerSelect" class="select-full" style="font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:0.85rem">
+                <option value="">— выберите —</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions-row" id="ballotQuickFill" style="display:none;margin-bottom:12px">
+            <button class="btn btn-ghost btn-sm" onclick="fillAllAnswers('За')">Все «За»</button>
+            <button class="btn btn-ghost btn-sm" onclick="fillAllAnswers('Против')">Все «Против»</button>
+            <button class="btn btn-ghost btn-sm" onclick="fillAllAnswers('Воздержался')">Все «Воздержался»</button>
+          </div>
+          <div id="ballotQuestions" class="ballot-answers"></div>
+          <div class="actions-row" id="ballotActions" style="display:none">
+            <button class="btn btn-success" onclick="saveBallot()">Сохранить</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Список бюллетеней выбранного голосования</h2>
+          <div id="ballotsList"></div>
+        </div>
+      </div>
+
+      <!-- ============ REPORTS ============ -->
+      <div id="panel-reports" class="panel">
+        <div class="card no-print">
+          <h2>Отчёты и печать</h2>
+          <div class="form-grid">
+            <div>
+              <label>Голосование</label>
+              <select id="reportVotingSelect" class="select-full" onchange="renderReport()">
+                <option value="">— выберите —</option>
+              </select>
+            </div>
+          </div>
+          <div class="doc-actions">
+            <details class="doc-menu doc-menu-primary">
+              <summary>Итоговый отчёт ▾</summary>
+              <div class="doc-menu-panel">
+                <button type="button" onclick="printReport(); this.closest('details').open=false">🖨 Печать</button>
+                <button type="button" onclick="saveReportDocx(); this.closest('details').open=false">💾 Сохранить в .docx</button>
+              </div>
+            </details>
+            <details class="doc-menu">
+              <summary>Сообщение о ОСС ▾</summary>
+              <div class="doc-menu-panel">
+                <button type="button" onclick="printOssNotice(); this.closest('details').open=false">🖨 Печать</button>
+                <button type="button" onclick="saveOssNoticeDocx(); this.closest('details').open=false">💾 Сохранить в .docx</button>
+              </div>
+            </details>
+            <details class="doc-menu">
+              <summary>Бюллетени собственников ▾</summary>
+              <div class="doc-menu-panel">
+                <button type="button" onclick="printOwnerBallots(); this.closest('details').open=false">🖨 Печать</button>
+                <button type="button" onclick="saveOwnerBallotsDocx(); this.closest('details').open=false">💾 Сохранить в .docx</button>
+              </div>
+            </details>
+            <details class="doc-menu">
+              <summary>Пустой бюллетень ▾</summary>
+              <div class="doc-menu-panel">
+                <button type="button" onclick="printBlankBallot(); this.closest('details').open=false">🖨 Печать</button>
+                <button type="button" onclick="saveBlankBallotDocx(); this.closest('details').open=false">💾 Сохранить в .docx</button>
+              </div>
+            </details>
+          </div>
+        </div>
+        <div id="reportArea" class="print-area"></div>
+      </div>
+
+      <!-- ============ HELP ============ -->
+      <div id="panel-help" class="panel">
+        <div class="card help-card">
+          <h2>О программе</h2>
+          <p>
+            Приложение предназначено для подготовки и проведения общего собрания собственников (ОСС)
+            и подсчёта бюллетеней. Работает <strong>полностью в браузере</strong>, без сервера и интернета
+            (после открытия страницы). Данные хранятся в памяти браузера (LocalStorage) и могут быть
+            сохранены или загружены из файла JSON.
+          </p>
+        </div>
+
+        <div class="card help-card">
+          <h2>Рекомендуемый порядок работы</h2>
+          <ol class="help-steps">
+            <li>
+              <strong>Дома и собственники</strong>
+              <ul>
+                <li>Создайте дом: адрес, общая площадь, количество квартир.</li>
+                <li>Добавьте собственников вручную или вставьте список (ФИО | квартира | площадь | документ).</li>
+                <li>При необходимости отредактируйте собственника (кнопка изменения в списке).</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Шаблоны вопросов</strong> (необязательно)
+              <ul>
+                <li>Создайте типовые вопросы, чтобы повторно использовать их в разных голосованиях.</li>
+                <li>У вопроса можно указать текст, решение, тип принятия решения и способ расчёта.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Голосования</strong>
+              <ul>
+                <li>Создайте голосование: дом, номер, вид (очное / заочное / очно-заочное), период.</li>
+                <li>Укажите инициаторов (из собственников дома), дату и время сообщения, место приёма решений.</li>
+                <li>Для очного и очно-заочного — место проведения собрания.</li>
+                <li>Добавьте вопросы вручную, из шаблона или отредактируйте уже добавленные.</li>
+                <li>Список вопросов в карточке голосования по умолчанию свёрнут.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Бюллетени</strong>
+              <ul>
+                <li>Выберите голосование и собственника (есть поиск и сортировка).</li>
+                <li>По умолчанию ответы стоят «Воздержался»; доступны кнопки «Все за / против / воздержался».</li>
+                <li>Цвет блока вопроса меняется по ответу: зелёный — за, красный — против, жёлтый — воздержался.</li>
+                <li>Сохраните бюллетень. Уже введённый можно изменить из списка бюллетеней.</li>
+              </ul>
+            </li>
+            <li>
+              <strong>Отчёты и печать</strong>
+              <ul>
+                <li>Выберите голосование — на экране появятся явка, кворум и результаты по вопросам.</li>
+                <li>Кворум считается набранным, если проголосовало более 50% от общей площади дома.</li>
+                <li>Документы: итоговый отчёт, сообщение о ОСС, бюллетени собственников, пустой бюллетень.</li>
+                <li>Для каждого документа: <em>Печать</em> или <em>Сохранить в .docx</em>.</li>
+              </ul>
+            </li>
+          </ol>
+        </div>
+
+        <div class="card help-card">
+          <h2>Вкладки и функции</h2>
+          <table class="help-table">
+            <thead>
+              <tr><th>Вкладка</th><th>Что можно сделать</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Дома и собственники</td>
+                <td>Справочник домов и собственников, массовая вставка списка, правка и удаление.</td>
+              </tr>
+              <tr>
+                <td>Голосования</td>
+                <td>Создание и редактирование голосований, вопросы, инициаторы, места и даты сообщения.</td>
+              </tr>
+              <tr>
+                <td>Шаблоны вопросов</td>
+                <td>Библиотека типовых вопросов для повторного использования.</td>
+              </tr>
+              <tr>
+                <td>Бюллетени</td>
+                <td>Ввод и редактирование ответов собственников, поиск, быстрое заполнение, компактный вид текста.</td>
+              </tr>
+              <tr>
+                <td>Отчёты и печать</td>
+                <td>Подсчёт итогов, печать и выгрузка документов в Word (.docx).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card help-card">
+          <h2>Данные и сохранение</h2>
+          <ul>
+            <li><strong>Сохранить JSON</strong> — выгрузить всю базу в файл на компьютер.</li>
+            <li><strong>Загрузить JSON</strong> — открыть ранее сохранённую базу.</li>
+            <li><strong>Новая БД</strong> — очистить текущие данные в браузере.</li>
+            <li>Промежуточное состояние автоматически пишется в LocalStorage браузера (защита от случайного закрытия вкладки).</li>
+            <li>Рекомендуется периодически сохранять JSON-файл как резервную копию.</li>
+          </ul>
+        </div>
+
+        <div class="card help-card">
+          <h2>Подсчёт голосов</h2>
+          <ul>
+            <li>Голос считается по <strong>площади</strong> помещения собственника (1 м² = 1 голос).</li>
+            <li>Явка — сумма площадей собственников, по которым введены бюллетени.</li>
+            <li>Кворум: явка &gt; 50% общей площади дома.</li>
+            <li>По каждому вопросу считаются доли «За», «Против», «Воздержался» от проголосовавших (или по формуле, заданной у вопроса).</li>
+            <li>Итог «принято / не принято» зависит от выбранной для вопроса формулы принятия решения.</li>
+          </ul>
+        </div>
+
+        <div class="card help-card">
+          <h2>Советы</h2>
+          <ul>
+            <li>Сначала заполните дом и собственников — без них нельзя корректно создать голосование и ввести бюллетени.</li>
+            <li>Номер голосования используется и как номер сообщения о проведении ОСС.</li>
+            <li>Перед массовым вводом бюллетеней удобно распечатать пустой бюллетень или бюллетени собственников.</li>
+            <li>После ввода всех бюллетеней сформируйте итоговый отчёт и при необходимости сохраните его в .docx.</li>
+          </ul>
+        </div>
+      </div>
+    </main>
+
+    <div class="status-bar no-print">
+      <span id="statusText">Готово</span>
+      <span id="dbInfo">База пуста</span>
+    </div>
+  </div>
+
+  <!-- Modal: House -->
+  <div class="modal-overlay" id="houseModal">
+    <div class="modal">
+      <h3 id="houseModalTitle">Добавить дом</h3>
+      <input type="hidden" id="houseId">
+      <div class="form-grid">
+        <div style="grid-column:1/-1">
+          <label>Адрес</label>
+          <input type="text" id="houseAddress" placeholder="г. Москва, ул. Пушкина, д. 10">
+        </div>
+        <div>
+          <label>Общая площадь дома, кв. м</label>
+          <input type="number" id="houseArea" step="0.01" min="0" placeholder="5000.5">
+        </div>
+        <div>
+          <label>Количество квартир</label>
+          <input type="number" id="houseApartmentsCount" step="1" min="0" placeholder="100">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="closeModal('houseModal')">Отмена</button>
+        <button class="btn btn-primary" onclick="saveHouse()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Owners bulk / single -->
+  <div class="modal-overlay" id="ownersModal">
+    <div class="modal" style="max-width:640px">
+      <h3>Собственники дома</h3>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px" id="ownersHouseAddr"></p>
+      <input type="hidden" id="ownersHouseId">
+
+      <h3 style="font-size:0.95rem">Массовая вставка (из Excel)</h3>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:6px">
+        Вставьте данные: <strong>ФИО</strong> → Tab → <strong>Квартира</strong> → Tab → <strong>Площадь</strong> → Tab → <strong>Номер документа</strong> (каждая строка — новый собственник)
+      </p>
+      <textarea id="ownersPaste" placeholder="Иванов Иван Иванович&#9;12&#9;55.2&#9;123456789&#10;Петров Пётр Петрович&#9;15&#9;42.0&#9;987654321"></textarea>
+      <div class="actions-row" style="margin-bottom:16px">
+        <button class="btn btn-primary btn-sm" onclick="parseOwnersPaste()">Добавить из буфера</button>
+      </div>
+
+      <h3 style="font-size:0.95rem" id="ownerFormTitle">Ручное добавление</h3>
+      <input type="hidden" id="ownerId">
+      <div class="form-grid">
+        <div>
+          <label>ФИО</label>
+          <input type="text" id="ownerName">
+        </div>
+        <div>
+          <label>Квартира</label>
+          <input type="text" id="ownerApartment" placeholder="12">
+        </div>
+        <div>
+          <label>Площадь, кв. м</label>
+          <input type="number" id="ownerArea" step="0.01" min="0">
+        </div>
+        <div>
+          <label>Номер документа</label>
+          <input type="text" id="ownerDoc">
+        </div>
+        <div>
+          <label>Тип документа</label>
+          <input type="text" id="ownerDocType" value="Выписка из ЕГРН">
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-primary btn-sm" id="ownerSaveBtn" onclick="addSingleOwner()">+ Добавить собственника</button>
+        <button class="btn btn-ghost btn-sm" id="ownerCancelEditBtn" style="display:none" onclick="resetOwnerForm()">Отмена</button>
+      </div>
+
+      <h3 style="font-size:0.95rem;margin-top:20px">Список собственников</h3>
+      <div id="ownersTable" style="max-height:240px;overflow-y:auto"></div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="closeModal('ownersModal')">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Voting -->
+  <div class="modal-overlay" id="votingModal">
+    <div class="modal" style="max-width:640px">
+      <h3 id="votingModalTitle">Создать голосование</h3>
+      <input type="hidden" id="votingId">
+      <div class="form-grid">
+        <div style="grid-column:1/-1">
+          <label>Дом</label>
+          <select id="votingHouse" class="select-full" onchange="onVotingHouseChange()"></select>
+        </div>
+        <div>
+          <label>Номер голосования (= № сообщения)</label>
+          <input type="text" id="votingNumber" placeholder="1">
+        </div>
+        <div>
+          <label>Вид голосования</label>
+          <select id="votingType" onchange="onVotingTypeChange()">
+            <option value="Очное">Очное</option>
+            <option value="Заочное">Заочное</option>
+            <option value="Очно-заочное">Очно-заочное</option>
+          </select>
+        </div>
+        <div>
+          <label>Дата начала</label>
+          <input type="date" id="votingStart">
+        </div>
+        <div>
+          <label>Дата окончания</label>
+          <input type="date" id="votingEnd">
+        </div>
+        <div>
+          <label>Дата и время сообщения</label>
+          <input type="datetime-local" id="votingMessageDate">
+        </div>
+        <div id="votingMeetingPlaceWrap" style="grid-column:1/-1">
+          <label>Место проведения собрания</label>
+          <input type="text" id="votingMeetingPlace" placeholder="во дворе дома у подъезда №4">
+        </div>
+        <div style="grid-column:1/-1">
+          <label>Место приёма решений</label>
+          <input type="text" id="votingDecisionsPlace" placeholder="у входа в подъезд №4">
+        </div>
+        <div style="grid-column:1/-1">
+          <label>Инициаторы (из собственников дома)</label>
+          <div id="votingInitiatorsList" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:8px;background:#f9fafb">
+            <p style="color:var(--muted);font-size:0.85rem;margin:0">Сначала выберите дом</p>
+          </div>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="closeModal('votingModal')">Отмена</button>
+        <button class="btn btn-primary" onclick="saveVoting()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Question / Template -->
+  <div class="modal-overlay" id="questionModal">
+    <div class="modal">
+      <h3 id="questionModalTitle">Добавить вопрос</h3>
+      <input type="hidden" id="questionVotingId">
+      <input type="hidden" id="questionId">
+      <input type="hidden" id="questionMode">
+      <div class="form-grid">
+        <div id="templatePickRow" style="grid-column:1/-1;display:none">
+          <label>Из шаблона (необязательно)</label>
+          <select id="questionFromTemplate" class="select-full" onchange="applyTemplateToForm()">
+            <option value="">— новый вопрос —</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1">
+          <label>Текст вопроса</label>
+          <textarea id="questionText" rows="3"></textarea>
+        </div>
+        <div style="grid-column:1/-1">
+          <label>Решение (формулировка)</label>
+          <textarea id="questionResolution" rows="2" placeholder="Утвердить смету расходов на ремонт крыши в размере 1 200 000 руб."></textarea>
+        </div>
+        <div style="grid-column:1/-1">
+          <label>Формула принятия решения</label>
+          <select id="questionDecision">
+            <option value="majority">Большинство от проголосовавших (>50% от сдавших бюллетени)</option>
+            <option value="majority_total">Большинство от общей площади дома (>50% от total_area)</option>
+            <option value="two_thirds">Квалифицированное большинство (≥2/3 от проголосовавших)</option>
+            <option value="two_thirds_total">Квалифицированное большинство (≥2/3 от общей площади)</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1" id="saveAsTemplateRow">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;color:var(--text)">
+            <input type="checkbox" id="saveAsTemplate" style="width:auto">
+            Также сохранить как шаблон
+          </label>
+        </div>
+      </div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="closeModal('questionModal')">Отмена</button>
+        <button class="btn btn-primary" id="questionSaveBtn" onclick="saveQuestion()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Confirm -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal" style="max-width:400px">
+      <h3 id="confirmTitle">Подтверждение</h3>
+      <p id="confirmText" style="margin-bottom:16px;color:var(--muted)"></p>
+      <div class="actions-row">
+        <button class="btn btn-ghost" onclick="closeModal('confirmModal')">Отмена</button>
+        <button class="btn btn-danger" id="confirmBtn">Удалить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ===================== DATA =====================
+    let db = { houses: [], votings: [], question_templates: [] };
+    const LS_KEY = 'oss_counter_db';
+
+    function uuid() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
+    function ensureDbShape() {
+      if (!db.houses) db.houses = [];
+      if (!db.votings) db.votings = [];
+      if (!db.question_templates) db.question_templates = [];
+    }
+
+    function saveToLS() {
+      try {
+        ensureDbShape();
+        localStorage.setItem(LS_KEY, JSON.stringify(db));
+        updateStatus();
+      } catch (e) { console.warn('LS error', e); }
+    }
+
+    function loadFromLS() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) {
+          db = JSON.parse(raw);
+        } else {
+          db = { houses: [], votings: [], question_templates: [] };
+        }
+        ensureDbShape();
+      } catch (e) { db = { houses: [], votings: [], question_templates: [] }; }
+    }
+
+    // ===================== UTILS =====================
+    function toast(msg, ms = 2500) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), ms);
+    }
+
+    function updateStatus() {
+      const houses = db.houses.length;
+      const owners = db.houses.reduce((s, h) => s + (h.owners?.length || 0), 0);
+      const votings = db.votings.length;
+      const ballots = db.votings.reduce((s, v) => s + (v.ballots?.length || 0), 0);
+      const templates = (db.question_templates || []).length;
+      document.getElementById('dbInfo').textContent =
+        `Домов: ${houses} · Собственников: ${owners} · Голосований: ${votings} · Бюллетеней: ${ballots} · Шаблонов: ${templates}`;
+      document.getElementById('statusText').textContent = 'Сохранено в LocalStorage';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('show');
+    }
+
+    function confirmAction(title, text, onConfirm) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmText').textContent = text;
+      const btn = document.getElementById('confirmBtn');
+      btn.onclick = () => { closeModal('confirmModal'); onConfirm(); };
+      openModal('confirmModal');
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      try {
+        // поддержка YYYY-MM-DD и полного ISO
+        const d = iso.length <= 10 ? new Date(iso + 'T00:00:00') : new Date(iso);
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch { return iso; }
+    }
+
+    function fmtNum(n) {
+      return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function pct(part, total) {
+      if (!total || total === 0) return '0';
+      return ((part / total) * 100).toFixed(2);
+    }
+
+    // ===================== TABS =====================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'ballots') fillBallotSelects();
+        if (btn.dataset.tab === 'reports') fillReportSelect();
+        if (btn.dataset.tab === 'votings') renderVotings();
+        if (btn.dataset.tab === 'templates') renderTemplates();
+        if (btn.dataset.tab === 'houses') renderHouses();
+      });
+    });
+
+    // ===================== HOUSES =====================
+    function renderHouses() {
+      const el = document.getElementById('housesList');
+      if (!db.houses.length) {
+        el.innerHTML = '<div class="empty">Нет домов. Добавьте первый дом.</div>';
+        return;
+      }
+      el.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>Адрес</th><th>Площадь</th><th>Квартир</th><th>Собственников</th><th></th>
+          </tr></thead>
+          <tbody>
+            ${db.houses.map(h => `
+              <tr>
+                <td>${escapeHtml(h.address)}</td>
+                <td>${fmtNum(h.total_area)} м²</td>
+                <td>${h.apartments_count != null && h.apartments_count !== '' ? h.apartments_count : '—'}</td>
+                <td>${h.owners?.length || 0}</td>
+                <td>
+                  <button class="btn btn-ghost btn-sm" onclick="openOwnersModal('${h.id}')">Собственники</button>
+                  <button class="btn btn-ghost btn-sm" onclick="editHouse('${h.id}')">Изменить</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteHouse('${h.id}')">Удалить</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function openHouseModal(id = null) {
+      document.getElementById('houseId').value = id || '';
+      document.getElementById('houseModalTitle').textContent = id ? 'Редактировать дом' : 'Добавить дом';
+      if (id) {
+        const h = db.houses.find(x => x.id === id);
+        document.getElementById('houseAddress').value = h.address;
+        document.getElementById('houseArea').value = h.total_area;
+        document.getElementById('houseApartmentsCount').value = h.apartments_count != null ? h.apartments_count : '';
+      } else {
+        document.getElementById('houseAddress').value = '';
+        document.getElementById('houseArea').value = '';
+        document.getElementById('houseApartmentsCount').value = '';
+      }
+      openModal('houseModal');
+    }
+
+    function editHouse(id) { openHouseModal(id); }
+
+    function saveHouse() {
+      const id = document.getElementById('houseId').value;
+      const address = document.getElementById('houseAddress').value.trim();
+      const area = parseFloat(document.getElementById('houseArea').value);
+      const aptRaw = document.getElementById('houseApartmentsCount').value;
+      const apartments_count = aptRaw === '' ? null : parseInt(aptRaw, 10);
+      if (!address) { toast('Укажите адрес'); return; }
+      if (isNaN(area) || area <= 0) { toast('Укажите корректную площадь'); return; }
+      if (apartments_count !== null && (isNaN(apartments_count) || apartments_count < 0)) {
+        toast('Укажите корректное количество квартир'); return;
+      }
+
+      if (id) {
+        const h = db.houses.find(x => x.id === id);
+        h.address = address;
+        h.total_area = area;
+        h.apartments_count = apartments_count;
+      } else {
+        db.houses.push({ id: uuid(), address, total_area: area, apartments_count, owners: [] });
+      }
+      saveToLS();
+      closeModal('houseModal');
+      renderHouses();
+      toast('Дом сохранён');
+    }
+
+    function deleteHouse(id) {
+      confirmAction('Удалить дом?', 'Все собственники и связанные голосования останутся, но дом будет удалён. Продолжить?', () => {
+        db.houses = db.houses.filter(h => h.id !== id);
+        saveToLS();
+        renderHouses();
+        toast('Дом удалён');
+      });
+    }
+
+    // ===================== OWNERS =====================
+    function resetOwnerForm() {
+      document.getElementById('ownerId').value = '';
+      document.getElementById('ownerName').value = '';
+      document.getElementById('ownerApartment').value = '';
+      document.getElementById('ownerArea').value = '';
+      document.getElementById('ownerDoc').value = '';
+      document.getElementById('ownerDocType').value = 'Выписка из ЕГРН';
+      document.getElementById('ownerFormTitle').textContent = 'Ручное добавление';
+      document.getElementById('ownerSaveBtn').textContent = '+ Добавить собственника';
+      document.getElementById('ownerCancelEditBtn').style.display = 'none';
+    }
+
+    function openOwnersModal(houseId) {
+      const h = db.houses.find(x => x.id === houseId);
+      if (!h) return;
+      document.getElementById('ownersHouseId').value = houseId;
+      document.getElementById('ownersHouseAddr').textContent = h.address;
+      document.getElementById('ownersPaste').value = '';
+      resetOwnerForm();
+      renderOwnersTable();
+      openModal('ownersModal');
+    }
+
+    function renderOwnersTable() {
+      const houseId = document.getElementById('ownersHouseId').value;
+      const h = db.houses.find(x => x.id === houseId);
+      const el = document.getElementById('ownersTable');
+      if (!h || !h.owners?.length) {
+        el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">Пока нет собственников</p>';
+        return;
+      }
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>ФИО</th><th>Кв.</th><th>Площадь</th><th>Документ</th><th></th></tr></thead>
+          <tbody>
+            ${h.owners.map(o => `
+              <tr>
+                <td>${escapeHtml(o.full_name)}</td>
+                <td>${escapeHtml(o.apartment || '—')}</td>
+                <td>${fmtNum(o.area)}</td>
+                <td>${escapeHtml(o.doc_number || '')}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn btn-ghost btn-sm" onclick="editOwner('${houseId}','${o.id}')">Изменить</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteOwner('${houseId}','${o.id}')">×</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function editOwner(houseId, ownerId) {
+      const h = db.houses.find(x => x.id === houseId);
+      if (!h) return;
+      const o = (h.owners || []).find(x => x.id === ownerId);
+      if (!o) return;
+      document.getElementById('ownerId').value = o.id;
+      document.getElementById('ownerName').value = o.full_name || '';
+      document.getElementById('ownerApartment').value = o.apartment || '';
+      document.getElementById('ownerArea').value = o.area != null ? o.area : '';
+      document.getElementById('ownerDoc').value = o.doc_number || '';
+      document.getElementById('ownerDocType').value = o.doc_type || 'Выписка из ЕГРН';
+      document.getElementById('ownerFormTitle').textContent = 'Редактирование собственника';
+      document.getElementById('ownerSaveBtn').textContent = 'Сохранить';
+      document.getElementById('ownerCancelEditBtn').style.display = 'inline-flex';
+    }
+
+    function parseOwnersPaste() {
+      const text = document.getElementById('ownersPaste').value.trim();
+      if (!text) { toast('Вставьте данные'); return; }
+      const houseId = document.getElementById('ownersHouseId').value;
+      const h = db.houses.find(x => x.id === houseId);
+      if (!h) return;
+      if (!h.owners) h.owners = [];
+
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      let added = 0;
+      for (const line of lines) {
+        const parts = line.split(/\t/).map(p => p.trim());
+        if (parts.length < 2) continue;
+        // Форматы:
+        // 1) ФИО | Квартира | Площадь | Документ  (рекомендуемый)
+        // 2) ФИО | Площадь | Документ              (старый)
+        // 3) ФИО | Площадь
+        const full_name = parts[0];
+        let apartment = '';
+        let area;
+        let doc_number = '';
+        if (parts.length >= 4) {
+          apartment = parts[1];
+          area = parseFloat(parts[2].replace(',', '.'));
+          doc_number = parts[3];
+        } else if (parts.length === 3) {
+          const mid = parseFloat(parts[1].replace(',', '.'));
+          const last = parseFloat(parts[2].replace(',', '.'));
+          // если средняя колонка — площадь (есть десятичная часть или явно число, а третья не похожа на площадь)
+          if (!isNaN(mid) && (parts[1].includes('.') || parts[1].includes(',') || isNaN(last))) {
+            area = mid;
+            doc_number = parts[2];
+          } else {
+            apartment = parts[1];
+            area = last;
+          }
+        } else {
+          area = parseFloat(parts[1].replace(',', '.'));
+        }
+        if (!full_name || isNaN(area)) continue;
+        h.owners.push({
+          id: uuid(),
+          full_name,
+          apartment: apartment || '',
+          area,
+          doc_number: doc_number || '',
+          doc_type: 'Выписка из ЕГРН'
+        });
+        added++;
+      }
+      saveToLS();
+      renderOwnersTable();
+      renderHouses();
+      document.getElementById('ownersPaste').value = '';
+      toast(`Добавлено собственников: ${added}`);
+    }
+
+    function addSingleOwner() {
+      const houseId = document.getElementById('ownersHouseId').value;
+      const h = db.houses.find(x => x.id === houseId);
+      if (!h) return;
+      const ownerId = document.getElementById('ownerId').value;
+      const full_name = document.getElementById('ownerName').value.trim();
+      const apartment = document.getElementById('ownerApartment').value.trim();
+      const area = parseFloat(document.getElementById('ownerArea').value);
+      const doc_number = document.getElementById('ownerDoc').value.trim();
+      const doc_type = document.getElementById('ownerDocType').value.trim() || 'Выписка из ЕГРН';
+      if (!full_name) { toast('Укажите ФИО'); return; }
+      if (isNaN(area) || area <= 0) { toast('Укажите площадь'); return; }
+      if (!h.owners) h.owners = [];
+
+      if (ownerId) {
+        const o = h.owners.find(x => x.id === ownerId);
+        if (!o) return;
+        o.full_name = full_name;
+        o.apartment = apartment;
+        o.area = area;
+        o.doc_number = doc_number;
+        o.doc_type = doc_type;
+        toast('Собственник обновлён');
+      } else {
+        h.owners.push({ id: uuid(), full_name, apartment, area, doc_number, doc_type });
+        toast('Собственник добавлен');
+      }
+      saveToLS();
+      renderOwnersTable();
+      renderHouses();
+      resetOwnerForm();
+    }
+
+    function deleteOwner(houseId, ownerId) {
+      const h = db.houses.find(x => x.id === houseId);
+      if (!h) return;
+      h.owners = h.owners.filter(o => o.id !== ownerId);
+      saveToLS();
+      renderOwnersTable();
+      renderHouses();
+      toast('Собственник удалён');
+    }
+
+    // ===================== VOTINGS =====================
+    // по умолчанию вопросы свёрнуты; сюда кладём id развёрнутых голосований
+    const expandedVotings = new Set();
+
+    function toggleVotingQuestions(votingId) {
+      if (expandedVotings.has(votingId)) expandedVotings.delete(votingId);
+      else expandedVotings.add(votingId);
+      const wrap = document.getElementById('vq-' + votingId);
+      const btn = document.getElementById('vq-btn-' + votingId);
+      if (!wrap || !btn) return;
+      const collapsed = !expandedVotings.has(votingId);
+      wrap.classList.toggle('collapsed', collapsed);
+      const qCount = (db.votings.find(v => v.id === votingId)?.questions || []).length;
+      btn.textContent = collapsed ? `▶ Вопросы (${qCount})` : `▼ Свернуть вопросы (${qCount})`;
+    }
+
+    function renderVotings() {
+      const el = document.getElementById('votingsList');
+      if (!db.votings.length) {
+        el.innerHTML = '<div class="empty">Нет голосований. Создайте первое.</div>';
+        return;
+      }
+      el.innerHTML = db.votings.map(v => {
+        const house = db.houses.find(h => h.id === v.house_id);
+        const qCount = v.questions?.length || 0;
+        const bCount = v.ballots?.length || 0;
+        const collapsed = !expandedVotings.has(v.id);
+        return `
+          <div class="card" style="margin-bottom:12px;padding:16px">
+            <div class="flex-between">
+              <div>
+                <strong>Голосование № ${escapeHtml(v.voting_number)}</strong>
+                <span class="badge badge-info" style="margin-left:8px">${escapeHtml(v.voting_type)}</span>
+                <div style="font-size:0.85rem;color:var(--muted);margin-top:4px">
+                  ${house ? escapeHtml(house.address) : 'Дом удалён'} ·
+                  ${fmtDate(v.period_start)} — ${fmtDate(v.period_end)}
+                </div>
+                <div style="font-size:0.8rem;margin-top:4px">
+                  Вопросов: ${qCount} · Бюллетеней: ${bCount}
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick="openQuestionModal('${v.id}')">+ Вопрос</button>
+                <button class="btn btn-ghost btn-sm" onclick="editVoting('${v.id}')">Изменить</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteVoting('${v.id}')">Удалить</button>
+              </div>
+            </div>
+            ${qCount ? `
+              <div class="voting-questions-wrap${collapsed ? ' collapsed' : ''}" id="vq-${v.id}">
+                <button type="button" class="btn btn-ghost btn-sm voting-toggle-btn" id="vq-btn-${v.id}"
+                  onclick="toggleVotingQuestions('${v.id}')" style="margin-top:10px">
+                  ${collapsed ? `▶ Вопросы (${qCount})` : `▼ Свернуть вопросы (${qCount})`}
+                </button>
+                <div class="voting-questions-body" style="margin-top:8px">
+                  <table>
+                    <thead><tr><th>#</th><th>Вопрос</th><th>Решение</th><th>Формула</th><th></th></tr></thead>
+                    <tbody>
+                      ${v.questions.map((q, i) => `
+                        <tr>
+                          <td>${i + 1}</td>
+                          <td>${escapeHtml(q.text)}</td>
+                          <td style="font-size:0.85rem">${escapeHtml(q.resolution || '—')}</td>
+                          <td style="font-size:0.8rem">${decisionLabel(q.decision_type)}</td>
+                          <td style="white-space:nowrap">
+                            <button class="btn btn-ghost btn-sm" onclick="editVotingQuestion('${v.id}','${q.id}')">Изменить</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteQuestion('${v.id}','${q.id}')">×</button>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>` : '<p style="color:var(--muted);font-size:0.85rem;margin-top:8px">Добавьте вопросы</p>'}
+          </div>`;
+      }).join('');
+    }
+
+    function decisionLabel(type) {
+      const map = {
+        majority: '>50% от проголосовавших',
+        majority_total: '>50% от общей площади',
+        two_thirds: '≥2/3 от проголосовавших',
+        two_thirds_total: '≥2/3 от общей площади'
+      };
+      return map[type] || type;
+    }
+
+    function onVotingTypeChange() {
+      const type = document.getElementById('votingType').value;
+      const wrap = document.getElementById('votingMeetingPlaceWrap');
+      const show = type === 'Очное' || type === 'Очно-заочное';
+      if (wrap) wrap.style.display = show ? 'block' : 'none';
+    }
+
+    function onVotingHouseChange() {
+      fillVotingInitiators();
+    }
+
+    function fillVotingInitiators(selectedIds = []) {
+      const houseId = document.getElementById('votingHouse').value;
+      const el = document.getElementById('votingInitiatorsList');
+      if (!el) return;
+      const house = db.houses.find(h => h.id === houseId);
+      const owners = house?.owners || [];
+      if (!owners.length) {
+        el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;margin:0">У дома нет собственников</p>';
+        return;
+      }
+      const sorted = [...owners].sort((a, b) =>
+        String(a.apartment || '').localeCompare(String(b.apartment || ''), 'ru', { numeric: true })
+        || (a.full_name || '').localeCompare(b.full_name || '', 'ru')
+      );
+      const selected = new Set(selectedIds || []);
+      el.innerHTML = sorted.map(o => {
+        const apt = o.apartment != null && o.apartment !== '' ? `кв. ${escapeHtml(String(o.apartment))}` : 'кв. —';
+        const checked = selected.has(o.id) ? ' checked' : '';
+        return `<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;cursor:pointer;font-size:0.85rem">
+          <input type="checkbox" class="voting-initiator-cb" value="${o.id}" style="width:auto"${checked}>
+          <span>${apt} — ${escapeHtml(o.full_name || '—')}</span>
+        </label>`;
+      }).join('');
+    }
+
+    function getSelectedInitiatorIds() {
+      return [...document.querySelectorAll('.voting-initiator-cb:checked')].map(cb => cb.value);
+    }
+
+    function openVotingModal(id = null) {
+      document.getElementById('votingId').value = id || '';
+      document.getElementById('votingModalTitle').textContent = id ? 'Редактировать голосование' : 'Создать голосование';
+      const sel = document.getElementById('votingHouse');
+      sel.innerHTML = db.houses.map(h =>
+        `<option value="${h.id}">${escapeHtml(h.address)}</option>`
+      ).join('') || '<option value="">Нет домов</option>';
+
+      if (id) {
+        const v = db.votings.find(x => x.id === id);
+        document.getElementById('votingHouse').value = v.house_id;
+        document.getElementById('votingNumber').value = v.voting_number;
+        document.getElementById('votingType').value = v.voting_type;
+        document.getElementById('votingStart').value = toLocalInput(v.period_start);
+        document.getElementById('votingEnd').value = toLocalInput(v.period_end);
+        document.getElementById('votingMessageDate').value = toLocalDateTimeInput(v.message_date || '');
+        document.getElementById('votingMeetingPlace').value = v.meeting_place || '';
+        document.getElementById('votingDecisionsPlace').value = v.decisions_place || '';
+        fillVotingInitiators(v.initiator_ids || []);
+      } else {
+        document.getElementById('votingNumber').value = '';
+        document.getElementById('votingType').value = 'Очное';
+        document.getElementById('votingStart').value = '';
+        document.getElementById('votingEnd').value = '';
+        document.getElementById('votingMessageDate').value = '';
+        document.getElementById('votingMeetingPlace').value = '';
+        document.getElementById('votingDecisionsPlace').value = '';
+        fillVotingInitiators([]);
+      }
+      onVotingTypeChange();
+      openModal('votingModal');
+    }
+
+    function toLocalInput(iso) {
+      if (!iso) return '';
+      try {
+        // YYYY-MM-DD или полный ISO → только дата для input type="date"
+        if (/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso.slice(0, 10);
+        const d = new Date(iso);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      } catch { return ''; }
+    }
+
+    function toLocalDateTimeInput(iso) {
+      if (!iso) return '';
+      try {
+        // datetime-local: YYYY-MM-DDTHH:MM
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return iso.slice(0, 16);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso + 'T00:00';
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      } catch { return ''; }
+    }
+
+    function editVoting(id) { openVotingModal(id); }
+
+    function saveVoting() {
+      const id = document.getElementById('votingId').value;
+      const house_id = document.getElementById('votingHouse').value;
+      const voting_number = document.getElementById('votingNumber').value.trim();
+      const voting_type = document.getElementById('votingType').value;
+      const period_start = document.getElementById('votingStart').value || '';
+      const period_end = document.getElementById('votingEnd').value || '';
+      const message_date = document.getElementById('votingMessageDate').value || '';
+      const meeting_place = document.getElementById('votingMeetingPlace').value.trim();
+      const decisions_place = document.getElementById('votingDecisionsPlace').value.trim();
+      const initiator_ids = getSelectedInitiatorIds();
+
+      if (!house_id) { toast('Выберите дом'); return; }
+      if (!voting_number) { toast('Укажите номер'); return; }
+
+      const extra = {
+        message_date,
+        meeting_place: (voting_type === 'Очное' || voting_type === 'Очно-заочное') ? meeting_place : '',
+        decisions_place,
+        initiator_ids
+      };
+
+      if (id) {
+        const v = db.votings.find(x => x.id === id);
+        v.house_id = house_id;
+        v.voting_number = voting_number;
+        v.voting_type = voting_type;
+        v.period_start = period_start;
+        v.period_end = period_end;
+        Object.assign(v, extra);
+      } else {
+        db.votings.push({
+          id: uuid(),
+          house_id,
+          voting_number,
+          period_start,
+          period_end,
+          voting_type,
+          ...extra,
+          questions: [],
+          ballots: []
+        });
+      }
+      saveToLS();
+      closeModal('votingModal');
+      renderVotings();
+      toast('Голосование сохранено');
+    }
+
+    function deleteVoting(id) {
+      confirmAction('Удалить голосование?', 'Будут удалены все вопросы и бюллетени этого голосования.', () => {
+        db.votings = db.votings.filter(v => v.id !== id);
+        saveToLS();
+        renderVotings();
+        toast('Голосование удалено');
+      });
+    }
+
+    // ===================== TEMPLATES =====================
+    function renderTemplates() {
+      const el = document.getElementById('templatesList');
+      if (!el) return;
+      const list = db.question_templates || [];
+      if (!list.length) {
+        el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">Нет шаблонов. Создайте шаблон или отметьте «Также сохранить как шаблон» при добавлении вопроса.</p>';
+        return;
+      }
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>Текст</th><th>Решение</th><th>Формула</th><th></th></tr></thead>
+          <tbody>
+            ${list.map(t => `
+              <tr>
+                <td>${escapeHtml(t.text)}</td>
+                <td style="font-size:0.85rem">${escapeHtml(t.resolution || '—')}</td>
+                <td style="font-size:0.8rem">${decisionLabel(t.decision_type)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn btn-ghost btn-sm" onclick="editTemplate('${t.id}')">Изменить</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">×</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function fillTemplateSelect() {
+      const sel = document.getElementById('questionFromTemplate');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— новый вопрос —</option>' +
+        (db.question_templates || []).map(t =>
+          `<option value="${t.id}">${escapeHtml(t.text.length > 80 ? t.text.slice(0, 80) + '…' : t.text)}</option>`
+        ).join('');
+    }
+
+    function applyTemplateToForm() {
+      const tid = document.getElementById('questionFromTemplate').value;
+      if (!tid) return;
+      const t = (db.question_templates || []).find(x => x.id === tid);
+      if (!t) return;
+      document.getElementById('questionText').value = t.text || '';
+      document.getElementById('questionResolution').value = t.resolution || '';
+      document.getElementById('questionDecision').value = t.decision_type || 'majority';
+    }
+
+    function openTemplateModal(id = null) {
+      document.getElementById('questionMode').value = id ? 'template_edit' : 'template_add';
+      document.getElementById('questionId').value = id || '';
+      document.getElementById('questionVotingId').value = '';
+      document.getElementById('questionModalTitle').textContent = id ? 'Редактировать шаблон' : 'Новый шаблон вопроса';
+      document.getElementById('questionSaveBtn').textContent = id ? 'Сохранить' : 'Создать шаблон';
+      document.getElementById('templatePickRow').style.display = 'none';
+      document.getElementById('saveAsTemplateRow').style.display = 'none';
+      document.getElementById('saveAsTemplate').checked = false;
+      document.getElementById('questionFromTemplate').value = '';
+      if (id) {
+        const t = (db.question_templates || []).find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('questionText').value = t.text || '';
+        document.getElementById('questionResolution').value = t.resolution || '';
+        document.getElementById('questionDecision').value = t.decision_type || 'majority';
+      } else {
+        document.getElementById('questionText').value = '';
+        document.getElementById('questionResolution').value = '';
+        document.getElementById('questionDecision').value = 'majority';
+      }
+      openModal('questionModal');
+    }
+
+    function editTemplate(id) { openTemplateModal(id); }
+
+    function deleteTemplate(id) {
+      confirmAction('Удалить шаблон?', 'Уже добавленные в голосования вопросы не изменятся.', () => {
+        db.question_templates = (db.question_templates || []).filter(t => t.id !== id);
+        saveToLS();
+        renderTemplates();
+        toast('Шаблон удалён');
+      });
+    }
+
+    // ===================== QUESTIONS IN VOTING =====================
+    function openQuestionModal(votingId) {
+      document.getElementById('questionMode').value = 'voting_add';
+      document.getElementById('questionVotingId').value = votingId;
+      document.getElementById('questionId').value = '';
+      document.getElementById('questionModalTitle').textContent = 'Добавить вопрос';
+      document.getElementById('questionSaveBtn').textContent = 'Добавить';
+      document.getElementById('templatePickRow').style.display = 'block';
+      document.getElementById('saveAsTemplateRow').style.display = 'block';
+      document.getElementById('saveAsTemplate').checked = false;
+      fillTemplateSelect();
+      document.getElementById('questionFromTemplate').value = '';
+      document.getElementById('questionText').value = '';
+      document.getElementById('questionResolution').value = '';
+      document.getElementById('questionDecision').value = 'majority';
+      openModal('questionModal');
+    }
+
+    function editVotingQuestion(votingId, qId) {
+      const v = db.votings.find(x => x.id === votingId);
+      if (!v) return;
+      const q = (v.questions || []).find(x => x.id === qId);
+      if (!q) return;
+      document.getElementById('questionMode').value = 'voting_edit';
+      document.getElementById('questionVotingId').value = votingId;
+      document.getElementById('questionId').value = qId;
+      document.getElementById('questionModalTitle').textContent = 'Редактировать вопрос';
+      document.getElementById('questionSaveBtn').textContent = 'Сохранить';
+      document.getElementById('templatePickRow').style.display = 'none';
+      document.getElementById('saveAsTemplateRow').style.display = 'block';
+      document.getElementById('saveAsTemplate').checked = false;
+      document.getElementById('questionText').value = q.text || '';
+      document.getElementById('questionResolution').value = q.resolution || '';
+      document.getElementById('questionDecision').value = q.decision_type || 'majority';
+      openModal('questionModal');
+    }
+
+    function saveQuestion() {
+      const mode = document.getElementById('questionMode').value;
+      const text = document.getElementById('questionText').value.trim();
+      const resolution = document.getElementById('questionResolution').value.trim();
+      const decision_type = document.getElementById('questionDecision').value;
+      if (!text) { toast('Введите текст вопроса'); return; }
+
+      const payload = { text, resolution, decision_type, calculation_method: 'by_area' };
+
+      if (mode === 'template_add') {
+        if (!db.question_templates) db.question_templates = [];
+        db.question_templates.push({ id: uuid(), ...payload });
+        saveToLS();
+        closeModal('questionModal');
+        renderTemplates();
+        toast('Шаблон создан');
+        return;
+      }
+
+      if (mode === 'template_edit') {
+        const id = document.getElementById('questionId').value;
+        const t = (db.question_templates || []).find(x => x.id === id);
+        if (!t) return;
+        Object.assign(t, payload);
+        saveToLS();
+        closeModal('questionModal');
+        renderTemplates();
+        toast('Шаблон сохранён');
+        return;
+      }
+
+      // voting_add / voting_edit
+      const votingId = document.getElementById('questionVotingId').value;
+      const v = db.votings.find(x => x.id === votingId);
+      if (!v) return;
+      if (!v.questions) v.questions = [];
+
+      let msg = '';
+      if (mode === 'voting_edit') {
+        const qId = document.getElementById('questionId').value;
+        const q = v.questions.find(x => x.id === qId);
+        if (!q) return;
+        Object.assign(q, payload);
+        msg = 'Вопрос обновлён';
+      } else {
+        const templateId = document.getElementById('questionFromTemplate').value || null;
+        v.questions.push({
+          id: uuid(),
+          ...payload,
+          template_id: templateId || undefined
+        });
+        msg = 'Вопрос добавлен';
+      }
+
+      if (document.getElementById('saveAsTemplate').checked) {
+        if (!db.question_templates) db.question_templates = [];
+        db.question_templates.push({ id: uuid(), ...payload });
+        msg += ' и сохранён как шаблон';
+      }
+
+      saveToLS();
+      closeModal('questionModal');
+      renderVotings();
+      renderTemplates();
+      toast(msg);
+    }
+
+    function deleteQuestion(votingId, qId) {
+      const v = db.votings.find(x => x.id === votingId);
+      if (!v) return;
+      v.questions = v.questions.filter(q => q.id !== qId);
+      if (v.ballots) {
+        v.ballots.forEach(b => {
+          if (b.answers) b.answers = b.answers.filter(a => a.question_id !== qId);
+        });
+      }
+      saveToLS();
+      renderVotings();
+      toast('Вопрос удалён');
+    }
+
+    // ===================== BALLOTS =====================
+    function fillBallotSelects() {
+      const sel = document.getElementById('ballotVotingSelect');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— выберите —</option>' +
+        db.votings.map(v => {
+          const h = db.houses.find(x => x.id === v.house_id);
+          return `<option value="${v.id}">№${escapeHtml(v.voting_number)} — ${h ? escapeHtml(h.address) : '?'}</option>`;
+        }).join('');
+      if (cur) sel.value = cur;
+      onBallotVotingChange();
+    }
+
+    let ballotTextCompact = false;
+
+    function getSortedOwners(owners) {
+      const sort = document.getElementById('ballotOwnerSort')?.value || 'name';
+      const list = [...(owners || [])];
+      const aptKey = a => {
+        const s = String(a.apartment || '');
+        const n = parseInt(s, 10);
+        return isNaN(n) ? s : n;
+      };
+      if (sort === 'name') {
+        list.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '', 'ru'));
+      } else if (sort === 'apartment') {
+        list.sort((a, b) => {
+          const ka = aptKey(a), kb = aptKey(b);
+          if (typeof ka === 'number' && typeof kb === 'number') return ka - kb;
+          return String(a.apartment || '').localeCompare(String(b.apartment || ''), 'ru', { numeric: true });
+        });
+      } else if (sort === 'area') {
+        list.sort((a, b) => (b.area || 0) - (a.area || 0));
+      } else if (sort === 'area_asc') {
+        list.sort((a, b) => (a.area || 0) - (b.area || 0));
+      }
+      return list;
+    }
+
+    function answerClass(value) {
+      if (value === 'За') return 'ans-za';
+      if (value === 'Против') return 'ans-protiv';
+      if (value === 'Воздержался') return 'ans-vozder';
+      return '';
+    }
+
+    function updateBallotQColor(qId) {
+      const block = document.getElementById('bq-' + qId);
+      if (!block) return;
+      const checked = document.querySelector(`input[name="ans_${qId}"]:checked`);
+      block.classList.remove('ans-za', 'ans-protiv', 'ans-vozder');
+      if (checked) block.classList.add(answerClass(checked.value));
+    }
+
+    function updateAllBallotQColors() {
+      document.querySelectorAll('.ballot-q[data-qid]').forEach(el => {
+        updateBallotQColor(el.dataset.qid);
+      });
+    }
+
+    function fillAllAnswers(value) {
+      const vid = document.getElementById('ballotVotingSelect').value;
+      if (!vid) return;
+      const v = db.votings.find(x => x.id === vid);
+      if (!v?.questions) return;
+      v.questions.forEach(q => {
+        const radio = document.querySelector(`input[name="ans_${q.id}"][value="${value}"]`);
+        if (radio) radio.checked = true;
+      });
+      updateAllBallotQColors();
+    }
+
+    function toggleBallotTextSize() {
+      ballotTextCompact = !ballotTextCompact;
+      const qEl = document.getElementById('ballotQuestions');
+      const btn = document.getElementById('ballotTextSizeBtn');
+      if (ballotTextCompact) {
+        qEl.classList.add('compact');
+        btn.textContent = 'Увеличить размер текста вопроса';
+      } else {
+        qEl.classList.remove('compact');
+        btn.textContent = 'Уменьшить размер текста вопроса';
+      }
+    }
+
+    let ballotOwnersCache = [];
+
+    function ownerLabelParts(owners) {
+      const pad = (s, n) => {
+        const str = String(s ?? '');
+        return str.length >= n ? str.slice(0, n) : str + ' '.repeat(n - str.length);
+      };
+      const aptStrs = owners.map(o => 'кв.' + (o.apartment != null && o.apartment !== '' ? String(o.apartment) : '—'));
+      const nameStrs = owners.map(o => String(o.full_name || '—').trim() || '—');
+      const areaStrs = owners.map(o => fmtNum(o.area) + ' м²');
+      const wApt = Math.max(6, ...aptStrs.map(s => s.length));
+      const wName = Math.max(10, ...nameStrs.map(s => s.length));
+      return owners.map((o, i) => ({
+        id: o.id,
+        label: `${pad(aptStrs[i], wApt)}  ${pad(nameStrs[i], wName)}  ${areaStrs[i]}`,
+        title: `${aptStrs[i]}, ${nameStrs[i]}, ${areaStrs[i]}`
+      }));
+    }
+
+    function matchOwners(q) {
+      let owners = ballotOwnersCache;
+      const query = (q || '').trim().toLowerCase();
+      if (!query) return owners;
+      return owners.filter(o => {
+        const apt = String(o.apartment || '').toLowerCase();
+        const name = String(o.full_name || '').toLowerCase();
+        const area = String(o.area ?? '');
+        const doc = String(o.doc_number || '').toLowerCase();
+        return apt.includes(query) || name.includes(query) || area.includes(query) || doc.includes(query);
+      });
+    }
+
+    function fillBallotOwnerSelect(prevOwner, options = {}) {
+      const ownerSel = document.getElementById('ballotOwnerSelect');
+      if (!ownerSel) return;
+      // allOwners: полный список без фильтра (после выбора из поиска)
+      const owners = options.allOwners
+        ? ballotOwnersCache
+        : matchOwners(document.getElementById('ballotOwnerSearch')?.value || '');
+
+      if (!owners.length) {
+        ownerSel.innerHTML = '<option value="">— нет совпадений —</option>';
+        return;
+      }
+
+      const parts = ownerLabelParts(owners);
+      ownerSel.innerHTML = '<option value="">— выберите —</option>' +
+        parts.map(p =>
+          `<option value="${p.id}" title="${escapeHtml(p.title)}">${escapeHtml(p.label)}</option>`
+        ).join('');
+      if (prevOwner && (owners.some(o => o.id === prevOwner) || ballotOwnersCache.some(o => o.id === prevOwner))) {
+        // если prevOwner есть в кэше, но отфильтрован — всё равно добавим и выберем
+        if (![...ownerSel.options].some(opt => opt.value === prevOwner)) {
+          const o = ballotOwnersCache.find(x => x.id === prevOwner);
+          if (o) {
+            const one = ownerLabelParts([o])[0];
+            ownerSel.insertAdjacentHTML('beforeend',
+              `<option value="${one.id}" title="${escapeHtml(one.title)}">${escapeHtml(one.label)}</option>`);
+          }
+        }
+        ownerSel.value = prevOwner;
+      }
+    }
+
+    function renderOwnerSearchDropdown() {
+      const dd = document.getElementById('ballotOwnerDropdown');
+      if (!dd) return;
+      const q = document.getElementById('ballotOwnerSearch')?.value || '';
+      if (!ballotOwnersCache.length) {
+        dd.style.display = 'none';
+        dd.innerHTML = '';
+        return;
+      }
+      const owners = matchOwners(q);
+      if (!owners.length) {
+        dd.innerHTML = '<div class="owner-opt-empty">Нет совпадений</div>';
+        dd.style.display = 'block';
+        return;
+      }
+      const parts = ownerLabelParts(owners);
+      dd.innerHTML = parts.map(p =>
+        `<div class="owner-opt" data-id="${p.id}" title="${escapeHtml(p.title)}">${escapeHtml(p.label)}</div>`
+      ).join('');
+      dd.style.display = 'block';
+      dd.querySelectorAll('.owner-opt').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectOwnerFromSearch(el.dataset.id);
+        });
+      });
+    }
+
+    function selectOwnerFromSearch(ownerId) {
+      const o = ballotOwnersCache.find(x => x.id === ownerId);
+      if (!o) return;
+      const searchEl = document.getElementById('ballotOwnerSearch');
+      const ownerSel = document.getElementById('ballotOwnerSelect');
+      const dd = document.getElementById('ballotOwnerDropdown');
+
+      // полный список в select + явный выбор id (не фильтруем по тексту поиска)
+      fillBallotOwnerSelect(ownerId, { allOwners: true });
+      if (ownerSel) ownerSel.value = ownerId;
+
+      if (searchEl) {
+        const apt = o.apartment != null && o.apartment !== '' ? o.apartment : '—';
+        searchEl.value = `кв.${apt} ${o.full_name || ''}`.trim();
+      }
+      if (dd) { dd.style.display = 'none'; dd.innerHTML = ''; }
+    }
+
+    function filterBallotOwners() {
+      const prev = document.getElementById('ballotOwnerSelect').value;
+      fillBallotOwnerSelect(prev);
+      renderOwnerSearchDropdown();
+    }
+
+    function hideOwnerSearchDropdown() {
+      const dd = document.getElementById('ballotOwnerDropdown');
+      if (dd) { dd.style.display = 'none'; }
+    }
+
+    document.addEventListener('click', e => {
+      const search = document.getElementById('ballotOwnerSearch');
+      const dd = document.getElementById('ballotOwnerDropdown');
+      if (search && dd) {
+        const box = search.parentElement;
+        if (box && !box.contains(e.target)) hideOwnerSearchDropdown();
+      }
+      document.querySelectorAll('details.doc-menu[open]').forEach(d => {
+        if (!d.contains(e.target)) d.open = false;
+      });
+    });
+
+    function onBallotVotingChange() {
+      const vid = document.getElementById('ballotVotingSelect').value;
+      const ownerSel = document.getElementById('ballotOwnerSelect');
+      const qEl = document.getElementById('ballotQuestions');
+      const actions = document.getElementById('ballotActions');
+      const quick = document.getElementById('ballotQuickFill');
+      const prevOwner = ownerSel.value;
+      const searchEl = document.getElementById('ballotOwnerSearch');
+
+      if (!vid) {
+        ballotOwnersCache = [];
+        if (searchEl) searchEl.value = '';
+        hideOwnerSearchDropdown();
+        ownerSel.innerHTML = '<option value="">— выберите —</option>';
+        qEl.innerHTML = '';
+        actions.style.display = 'none';
+        quick.style.display = 'none';
+        document.getElementById('ballotsList').innerHTML = '';
+        return;
+      }
+
+      const v = db.votings.find(x => x.id === vid);
+      const house = db.houses.find(h => h.id === v.house_id);
+      ballotOwnersCache = getSortedOwners(house?.owners || []);
+      fillBallotOwnerSelect(prevOwner);
+
+      if (ballotTextCompact) qEl.classList.add('compact');
+      else qEl.classList.remove('compact');
+
+      if (!v.questions?.length) {
+        qEl.innerHTML = '<p style="color:var(--muted)">У голосования нет вопросов</p>';
+        actions.style.display = 'none';
+        quick.style.display = 'none';
+      } else {
+        qEl.innerHTML = v.questions.map((q, i) => `
+          <div class="ballot-q ans-vozder" id="bq-${q.id}" data-qid="${q.id}">
+            <label class="q-text">${i + 1}. ${escapeHtml(q.text)}</label>
+            ${q.resolution ? `<div class="q-resolution" style="font-size:0.85rem;color:var(--muted);margin:4px 0 8px">Решение: ${escapeHtml(q.resolution)}</div>` : ''}
+            <div class="radio-group">
+              <label><input type="radio" name="ans_${q.id}" value="За" onchange="updateBallotQColor('${q.id}')"> За</label>
+              <label><input type="radio" name="ans_${q.id}" value="Против" onchange="updateBallotQColor('${q.id}')"> Против</label>
+              <label><input type="radio" name="ans_${q.id}" value="Воздержался" checked onchange="updateBallotQColor('${q.id}')"> Воздержался</label>
+            </div>
+          </div>
+        `).join('');
+        actions.style.display = 'flex';
+        quick.style.display = 'flex';
+      }
+      renderBallotsList(vid);
+    }
+
+    function saveBallot() {
+      const vid = document.getElementById('ballotVotingSelect').value;
+      const oid = document.getElementById('ballotOwnerSelect').value;
+      if (!vid || !oid) { toast('Выберите голосование и собственника'); return; }
+
+      const v = db.votings.find(x => x.id === vid);
+      if (!v.questions?.length) { toast('Нет вопросов'); return; }
+
+      const answers = [];
+      for (const q of v.questions) {
+        const checked = document.querySelector(`input[name="ans_${q.id}"]:checked`);
+        if (!checked) { toast('Ответьте на все вопросы'); return; }
+        answers.push({ question_id: q.id, answer: checked.value });
+      }
+
+      if (!v.ballots) v.ballots = [];
+      const existing = v.ballots.findIndex(b => b.owner_id === oid);
+      const ballot = { id: existing >= 0 ? v.ballots[existing].id : uuid(), owner_id: oid, answers };
+      if (existing >= 0) v.ballots[existing] = ballot;
+      else v.ballots.push(ballot);
+
+      saveToLS();
+      toast(existing >= 0 ? 'Бюллетень обновлён' : 'Бюллетень сохранён');
+
+      v.questions.forEach(q => {
+        const def = document.querySelector(`input[name="ans_${q.id}"][value="Воздержался"]`);
+        if (def) def.checked = true;
+      });
+      updateAllBallotQColors();
+
+      document.getElementById('ballotOwnerSelect').value = '';
+      renderBallotsList(vid);
+    }
+
+    function renderBallotsList(vid) {
+      const v = db.votings.find(x => x.id === vid);
+      const el = document.getElementById('ballotsList');
+      if (!v || !v.ballots?.length) {
+        el.innerHTML = '<div class="empty" style="padding:20px">Бюллетеней пока нет</div>';
+        return;
+      }
+      const house = db.houses.find(h => h.id === v.house_id);
+      el.innerHTML = `
+        <table>
+          <thead><tr><th>Собственник</th><th>Кв.</th><th>Площадь</th><th>Ответы</th><th></th></tr></thead>
+          <tbody>
+            ${v.ballots.map(b => {
+              const o = house?.owners?.find(x => x.id === b.owner_id);
+              const ans = (b.answers || []).map(a => {
+                const q = v.questions.find(qq => qq.id === a.question_id);
+                return `${(v.questions.indexOf(q) + 1)}. ${a.answer}`;
+              }).join('; ');
+              return `<tr>
+                <td>${o ? escapeHtml(o.full_name) : '?'}</td>
+                <td>${o ? escapeHtml(o.apartment || '—') : '—'}</td>
+                <td>${o ? fmtNum(o.area) : '—'}</td>
+                <td style="font-size:0.8rem">${escapeHtml(ans)}</td>
+                <td style="white-space:nowrap">
+                  <button class="btn btn-ghost btn-sm" onclick="editBallot('${vid}','${b.id}')">Изменить</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteBallot('${vid}','${b.id}')">×</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    function editBallot(vid, bid) {
+      const v = db.votings.find(x => x.id === vid);
+      if (!v) return;
+      const ballot = (v.ballots || []).find(b => b.id === bid);
+      if (!ballot) return;
+
+      // убедиться, что выбранное голосование совпадает и форма вопросов отрисована
+      const votingSel = document.getElementById('ballotVotingSelect');
+      if (votingSel.value !== vid) {
+        votingSel.value = vid;
+        onBallotVotingChange();
+      } else if (!v.questions?.length) {
+        onBallotVotingChange();
+      }
+
+      const searchEl = document.getElementById('ballotOwnerSearch');
+      if (searchEl) searchEl.value = '';
+      fillBallotOwnerSelect(ballot.owner_id);
+      const ownerSel = document.getElementById('ballotOwnerSelect');
+      ownerSel.value = ballot.owner_id;
+
+      (v.questions || []).forEach(q => {
+        const ans = (ballot.answers || []).find(a => a.question_id === q.id);
+        const value = ans?.answer || 'Воздержался';
+        const radio = document.querySelector(`input[name="ans_${q.id}"][value="${value}"]`);
+        if (radio) radio.checked = true;
+        else {
+          const def = document.querySelector(`input[name="ans_${q.id}"][value="Воздержался"]`);
+          if (def) def.checked = true;
+        }
+      });
+      updateAllBallotQColors();
+
+      // прокрутка к форме ввода
+      document.getElementById('ballotQuestions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      toast('Бюллетень загружен для редактирования');
+    }
+
+    function deleteBallot(vid, bid) {
+      const v = db.votings.find(x => x.id === vid);
+      if (!v) return;
+      v.ballots = v.ballots.filter(b => b.id !== bid);
+      saveToLS();
+      renderBallotsList(vid);
+      toast('Бюллетень удалён');
+    }
+
+    // ===================== REPORTS & CALC =====================
+    function fillReportSelect() {
+      const sel = document.getElementById('reportVotingSelect');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— выберите —</option>' +
+        db.votings.map(v => {
+          const h = db.houses.find(x => x.id === v.house_id);
+          return `<option value="${v.id}">№${escapeHtml(v.voting_number)} — ${h ? escapeHtml(h.address) : '?'}</option>`;
+        }).join('');
+      if (cur) { sel.value = cur; renderReport(); }
+    }
+
+    function calcResults(voting) {
+      const house = db.houses.find(h => h.id === voting.house_id);
+      if (!house) return null;
+      const totalArea = house.total_area || 0;
+      const ownersMap = {};
+      (house.owners || []).forEach(o => { ownersMap[o.id] = o; });
+
+      let votedArea = 0;
+      const results = {};
+      (voting.questions || []).forEach(q => {
+        results[q.id] = { za: 0, protiv: 0, vozder: 0, text: q.text, resolution: q.resolution || '', decision_type: q.decision_type };
+      });
+
+      (voting.ballots || []).forEach(b => {
+        const owner = ownersMap[b.owner_id];
+        if (!owner) return;
+        const area = owner.area || 0;
+        votedArea += area;
+        (b.answers || []).forEach(a => {
+          if (!results[a.question_id]) return;
+          if (a.answer === 'За') results[a.question_id].za += area;
+          else if (a.answer === 'Против') results[a.question_id].protiv += area;
+          else results[a.question_id].vozder += area;
+        });
+      });
+
+      const quorum = votedArea > totalArea * 0.5;
+
+      const questionsOut = Object.entries(results).map(([qid, r], idx) => {
+        const sum = r.za + r.protiv + r.vozder;
+        let accepted = false;
+        const dt = r.decision_type;
+        if (dt === 'majority') accepted = r.za > sum * 0.5;
+        else if (dt === 'majority_total') accepted = r.za > totalArea * 0.5;
+        else if (dt === 'two_thirds') accepted = r.za >= sum * (2 / 3);
+        else if (dt === 'two_thirds_total') accepted = r.za >= totalArea * (2 / 3);
+
+        return {
+          num: idx + 1,
+          text: r.text,
+          resolution: r.resolution,
+          decision_type: dt,
+          decisionLabel: decisionLabel(dt),
+          za: r.za, protiv: r.protiv, vozder: r.vozder,
+          zaPct: pct(r.za, sum),
+          protivPct: pct(r.protiv, sum),
+          vozderPct: pct(r.vozder, sum),
+          accepted
+        };
+      });
+
+      return {
+        house,
+        voting,
+        totalArea,
+        votedArea,
+        votedPct: pct(votedArea, totalArea),
+        quorum,
+        questions: questionsOut
+      };
+    }
+
+    function renderReport() {
+      const vid = document.getElementById('reportVotingSelect').value;
+      const el = document.getElementById('reportArea');
+      if (!vid) { el.innerHTML = ''; return; }
+      const v = db.votings.find(x => x.id === vid);
+      const data = calcResults(v);
+      if (!data) {
+        el.innerHTML = '<div class="empty">Не удалось сформировать отчёт (дом не найден)</div>';
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="report card">
+          <h2>ИТОГОВЫЙ ОТЧЁТ ПО ГОЛОСОВАНИЮ</h2>
+          <div class="meta">
+            Голосование № ${escapeHtml(data.voting.voting_number)} по адресу: ${escapeHtml(data.house.address)}<br>
+            Вид: ${escapeHtml(data.voting.voting_type)} · ${fmtDate(data.voting.period_start)} — ${fmtDate(data.voting.period_end)}
+          </div>
+          <p><strong>Общая площадь дома:</strong> ${fmtNum(data.totalArea)} кв. м.</p>
+
+          <div class="stat">
+            <strong>СТАТИСТИКА</strong><br>
+            Явка / Проголосовало: <strong>${fmtNum(data.votedArea)}</strong> кв. м. (${data.votedPct}%)<br>
+            Кворум: <span class="badge ${data.quorum ? 'badge-success' : 'badge-danger'}">${data.quorum ? 'Набран' : 'Не набран'}</span>
+            <span style="font-size:0.8rem;color:var(--muted)">(кворум при >50% от общей площади)</span>
+          </div>
+
+          <h3 style="margin-top:20px">РЕЗУЛЬТАТЫ ПО ВОПРОСАМ</h3>
+          ${data.questions.map(q => `
+            <div class="question">
+              <strong>${q.num}. ${escapeHtml(q.text)}</strong><br>
+              ${q.resolution ? `<div style="margin:4px 0;font-size:0.9rem"><em>Решение:</em> ${escapeHtml(q.resolution)}</div>` : ''}
+              <span style="font-size:0.85rem;color:var(--muted)">Формула принятия: ${q.decisionLabel}</span>
+              <div style="margin-top:8px">
+                «За»: <strong>${fmtNum(q.za)}</strong> кв. м. (${q.zaPct}%) ·
+                «Против»: <strong>${fmtNum(q.protiv)}</strong> кв. м. (${q.protivPct}%) ·
+                «Воздержался»: <strong>${fmtNum(q.vozder)}</strong> кв. м. (${q.vozderPct}%)
+              </div>
+              <div style="margin-top:6px">
+                ИТОГО: Решение
+                <span class="${q.accepted ? 'result-accepted' : 'result-rejected'}">
+                  ${q.accepted ? 'ПРИНЯТО' : 'НЕ ПРИНЯТО'}
+                </span>
+              </div>
+            </div>
+          `).join('') || '<p>Нет вопросов</p>'}
+        </div>`;
+    }
+
+    function printReport() {
+      const vid = document.getElementById('reportVotingSelect').value;
+      if (!vid) { toast('Выберите голосование'); return; }
+      renderReport();
+      window.print();
+    }
+
+    function openDocumentPrintWindow(html, title) {
+      const w = window.open('', '_blank');
+      if (!w) { toast('Разрешите всплывающие окна для печати'); return; }
+      w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title || 'Документ'}</title>
+        <style>
+          body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Times New Roman",serif}
+          @media print{body{margin:0}}
+        </style></head>
+        <body>${html}</body></html>`);
+      w.document.close();
+      w.focus();
+      setTimeout(() => w.print(), 350);
+    }
+
+
+
+    // ===================== DOCX EXPORT (pure JS, offline) =====================
+    function crc32(buf) {
+      let c = ~0;
+      for (let i = 0; i < buf.length; i++) {
+        c ^= buf[i];
+        for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+      }
+      return ~c >>> 0;
+    }
+
+    function u16(n) {
+      const b = new Uint8Array(2);
+      b[0] = n & 255; b[1] = (n >>> 8) & 255;
+      return b;
+    }
+    function u32(n) {
+      const b = new Uint8Array(4);
+      b[0] = n & 255; b[1] = (n >>> 8) & 255; b[2] = (n >>> 16) & 255; b[3] = (n >>> 24) & 255;
+      return b;
+    }
+    function concatBytes(parts) {
+      const len = parts.reduce((s, p) => s + p.length, 0);
+      const out = new Uint8Array(len);
+      let off = 0;
+      for (const p of parts) { out.set(p, off); off += p.length; }
+      return out;
+    }
+    function strToUtf8(s) {
+      return new TextEncoder().encode(s);
+    }
+
+    function zipStore(files) {
+      // files: [{name, data: Uint8Array}]
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+      for (const f of files) {
+        const nameBytes = strToUtf8(f.name);
+        const data = f.data;
+        const crc = crc32(data);
+        const local = concatBytes([
+          u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+          u32(crc), u32(data.length), u32(data.length),
+          u16(nameBytes.length), u16(0), nameBytes, data
+        ]);
+        const central = concatBytes([
+          u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+          u32(crc), u32(data.length), u32(data.length),
+          u16(nameBytes.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset),
+          nameBytes
+        ]);
+        localParts.push(local);
+        centralParts.push(central);
+        offset += local.length;
+      }
+      const centralDir = concatBytes(centralParts);
+      const end = concatBytes([
+        u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+        u32(centralDir.length), u32(offset), u16(0)
+      ]);
+      return concatBytes([...localParts, centralDir, end]);
+    }
+
+    function xmlEscape(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /** blocks: [{type:'p', text, bold?, center?, size?}, {type:'break'}] */
+    function buildDocxFromBlocks(blocks) {
+      const bodyParts = [];
+      for (const b of blocks) {
+        if (b.type === 'break') {
+          bodyParts.push(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`);
+          continue;
+        }
+        const text = xmlEscape(b.text || '');
+        const jc = b.center ? '<w:jc w:val="center"/>' : (b.justify ? '<w:jc w:val="both"/>' : '');
+        const bold = b.bold ? '<w:b/>' : '';
+        const size = b.size ? `<w:sz w:val="${b.size}"/><w:szCs w:val="${b.size}"/>` : '<w:sz w:val="24"/><w:szCs w:val="24"/>';
+        const indent = b.indent ? `<w:ind w:firstLine="567"/>` : '';
+        bodyParts.push(
+          `<w:p><w:pPr>${jc}${indent}<w:spacing w:after="120"/></w:pPr>` +
+          `<w:r><w:rPr>${bold}${size}<w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/></w:rPr>` +
+          `<w:t xml:space="preserve">${text}</w:t></w:r></w:p>`
+        );
+      }
+      const documentXml =
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+        `<w:body>${bodyParts.join('')}` +
+        `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr>` +
+        `</w:body></w:document>`;
+
+      const contentTypes =
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+        `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+        `<Default Extension="xml" ContentType="application/xml"/>` +
+        `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
+        `</Types>`;
+
+      const rels =
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
+        `</Relationships>`;
+
+      const docRels =
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+
+      const zip = zipStore([
+        { name: '[Content_Types].xml', data: strToUtf8(contentTypes) },
+        { name: '_rels/.rels', data: strToUtf8(rels) },
+        { name: 'word/document.xml', data: strToUtf8(documentXml) },
+        { name: 'word/_rels/document.xml.rels', data: strToUtf8(docRels) }
+      ]);
+      return new Blob([zip], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    }
+
+    function downloadBlob(blob, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+
+    function saveDocx(filename, blocks) {
+      const blob = buildDocxFromBlocks(blocks);
+      downloadBlob(blob, filename);
+      toast('Файл .docx сохранён');
+    }
+
+    function p(text, opts = {}) {
+      return { type: 'p', text, ...opts };
+    }
+    function pageBreak() {
+      return { type: 'break' };
+    }
+
+    function getSelectedVoting() {
+      const vid = document.getElementById('reportVotingSelect').value;
+      if (!vid) { toast('Выберите голосование'); return null; }
+      const v = db.votings.find(x => x.id === vid);
+      if (!v) return null;
+      const house = db.houses.find(h => h.id === v.house_id);
+      if (!house) { toast('Дом не найден'); return null; }
+      return { v, house };
+    }
+
+    function buildReportBlocks(data) {
+      const blocks = [
+        p('ИТОГОВЫЙ ОТЧЁТ ПО ГОЛОСОВАНИЮ', { bold: true, center: true, size: 28 }),
+        p(`Голосование № ${data.voting.voting_number} по адресу: ${data.house.address}`, { center: true }),
+        p(`Вид: ${data.voting.voting_type} · ${fmtDate(data.voting.period_start)} — ${fmtDate(data.voting.period_end)}`, { center: true }),
+        p(`Общая площадь дома: ${fmtNum(data.totalArea)} кв. м.`),
+        p(`СТАТИСТИКА`, { bold: true }),
+        p(`Явка / Проголосовало: ${fmtNum(data.votedArea)} кв. м. (${data.votedPct}%)`),
+        p(`Кворум: ${data.quorum ? 'Набран' : 'Не набран'} (кворум при >50% от общей площади)`),
+        p('РЕЗУЛЬТАТЫ ПО ВОПРОСАМ', { bold: true })
+      ];
+      data.questions.forEach(q => {
+        blocks.push(p(`${q.num}. ${q.text}`, { bold: true }));
+        if (q.resolution) blocks.push(p(`Решение: ${q.resolution}`));
+        blocks.push(p(`Формула принятия: ${q.decisionLabel}`));
+        blocks.push(p(`«За»: ${fmtNum(q.za)} кв. м. (${q.zaPct}%) · «Против»: ${fmtNum(q.protiv)} кв. м. (${q.protivPct}%) · «Воздержался»: ${fmtNum(q.vozder)} кв. м. (${q.vozderPct}%)`));
+        blocks.push(p(`ИТОГО: Решение ${q.accepted ? 'ПРИНЯТО' : 'НЕ ПРИНЯТО'}`, { bold: true }));
+      });
+      return blocks;
+    }
+
+    function saveReportDocx() {
+      const sel = getSelectedVoting();
+      if (!sel) return;
+      const data = calcResults(sel.v);
+      if (!data) { toast('Не удалось сформировать отчёт'); return; }
+      const num = sel.v.voting_number || 'x';
+      saveDocx(`itogi_golosovanie_${num}.docx`, buildReportBlocks(data));
+    }
+
+    function buildBallotBlocks(v, house, o) {
+      const periodStr = (v.period_start || v.period_end)
+        ? `с ${fmtDateLong(v.period_start)} по ${fmtDateLong(v.period_end)}`
+        : 'с ______________ по ______________';
+      const formPhrase = votingFormPhrase(v.voting_type);
+      const address = house.address || '________________';
+      const hasOwner = !!(o && o.full_name);
+      const fio = hasOwner ? o.full_name : '________________________________';
+      const apt = (o && o.apartment) ? String(o.apartment) : '______';
+      const area = (o && o.area != null) ? fmtNum(o.area) : '_____';
+      const docNum = (o && o.doc_number) ? String(o.doc_number) : '____________________';
+
+      const blocks = [
+        p('Решения (бюллетень)', { bold: true, center: true, size: 28 }),
+        p(`Собственника помещения на общем собрании собственников помещений многоквартирного дома ${address} ${periodStr} в форме ${formPhrase}`, { justify: true }),
+        p(`${fio} - кв. ${apt}`),
+        p('(Ф. И. О. собственника)', { center: true, size: 20 }),
+        p(`Документ на право собственности № ${docNum}`),
+        p(`Площадь помещения, приходящегося на собственника исходя из принадлежащей ему доли ${area} кв. м.`)
+      ];
+      (v.questions || []).forEach((q, i) => {
+        if (i > 0) blocks.push(p('────────────────────────────────────────'));
+        blocks.push(p(`${i + 1}. ${q.text}`, { bold: true }));
+        if (q.resolution) blocks.push(p(`Решение: ${q.resolution}`));
+        blocks.push(p('☐ За      ☐ Против      ☐ Воздержался'));
+      });
+      blocks.push(p('Дата голосования «___»___________20__ / _______________________________ / _____________'));
+      blocks.push(p('(Ф.И.О. собственника помещения)                    (подпись)', { size: 20 }));
+      blocks.push(p('Представитель ________________________________________________ / _______________'));
+      blocks.push(p('(Ф.И.О. представителя)                    (подпись)', { size: 20 }));
+      return blocks;
+    }
+
+    function saveOwnerBallotsDocx() {
+      const sel = getSelectedVoting();
+      if (!sel) return;
+      const { v, house } = sel;
+      const owners = house.owners || [];
+      if (!owners.length) { toast('Нет собственников'); return; }
+      if (!v.questions?.length) { toast('Нет вопросов'); return; }
+      const blocks = [];
+      owners.forEach((o, i) => {
+        if (i > 0) blocks.push(pageBreak());
+        blocks.push(...buildBallotBlocks(v, house, o));
+      });
+      saveDocx(`byulleteni_sobstvenniki_${v.voting_number || 'x'}.docx`, blocks);
+    }
+
+    function saveBlankBallotDocx() {
+      const sel = getSelectedVoting();
+      if (!sel) return;
+      const { v, house } = sel;
+      if (!v.questions?.length) { toast('Нет вопросов'); return; }
+      saveDocx(`byulleten_pustoy_${v.voting_number || 'x'}.docx`, buildBallotBlocks(v, house, null));
+    }
+
+    function buildOssNoticeBlocks(v, house) {
+      const ownersMap = {};
+      (house.owners || []).forEach(o => { ownersMap[o.id] = o; });
+      const initiators = (v.initiator_ids || []).map(id => ownersMap[id]).filter(Boolean);
+      const initText = initiators.length
+        ? initiators.map(o => {
+            const apt = o.apartment != null && o.apartment !== '' ? `кв. N${o.apartment}` : 'кв. N___';
+            return `${shortOwnerName(o.full_name)} – собственника ${apt}`;
+          }).join(', ')
+        : '________________ – собственника кв. N___';
+
+      const formPhrase = votingFormPhrase(v.voting_type);
+      const isOchnoe = v.voting_type === 'Очное' || v.voting_type === 'Очно-заочное';
+      const isZaochnoe = v.voting_type === 'Заочное' || v.voting_type === 'Очно-заочное';
+      const address = house.address || '________________';
+      const msgNum = v.voting_number || '___';
+      const startLong = fmtDateLong(v.period_start);
+      const endLong = fmtDateLong(v.period_end);
+      const msgDate = v.message_date ? fmtDateTimeLong(v.message_date) : '«___» __________ 20__ г. __:__';
+      const meetingPlace = v.meeting_place || '________________';
+      const decisionsPlace = v.decisions_place || '________________';
+      const materialsPlace = decisionsPlace || meetingPlace || '________________';
+
+      const blocks = [
+        p(`Сообщение №${msgNum}`, { bold: true, center: true, size: 28 }),
+        p(`О проведении общего собрания собственников помещений в многоквартирном доме ${address}.`, { bold: true, center: true }),
+        p('Уважаемые собственники жилых помещений!'),
+        p(`Сообщаем вам, что по инициативе ${initText} созывается общее собрание собственников помещений в форме ${formPhrase} для обсуждения вопросов повестки дня и принятия по ним решений.`, { justify: true })
+      ];
+      if (isOchnoe) {
+        blocks.push(p(`Дата проведения собрания в форме совместного присутствия собственников помещений (очного голосования) ${startLong} во дворе / в месте: ${meetingPlace}. Регистрация участников собрания — до начала собрания.`, { justify: true }));
+      }
+      if (isZaochnoe) {
+        blocks.push(p(`Приём решений собственников, проголосовавших заочно с ${startLong} по ${endLong} по адресу (месту): ${decisionsPlace}.`, { justify: true }));
+      } else if (v.decisions_place) {
+        blocks.push(p(`Место приёма решений: ${decisionsPlace}.`, { justify: true }));
+      }
+      blocks.push(p('Повестка дня собрания:', { bold: true }));
+      const questions = v.questions || [];
+      if (questions.length) {
+        questions.forEach((q, i) => blocks.push(p(`${i + 1}. ${q.text}`)));
+      } else {
+        blocks.push(p('1. ________________'));
+      }
+      blocks.push(p(`Собственники помещений могут ознакомиться с материалами к общему собранию и предложить свои кандидатуры для избрания председателем, секретарём и членами счётной комиссии общего собрания по месту: ${materialsPlace}.`, { justify: true }));
+      blocks.push(p('Количество голосов, которым обладает каждый собственник на общем собрании, пропорционально его доле в праве собственности на общую площадь жилого помещения.', { justify: true }));
+      blocks.push(p('Решения общего собрания собственников являются обязательными для всех собственников, в том числе для тех, которые не участвовали в голосовании.', { justify: true }));
+      blocks.push(p(`Если собственник не может принять личное участие в голосовании, то за него может проголосовать представитель по доверенности на голосование (с образцом доверенности можно ознакомиться по месту: ${materialsPlace}).`, { justify: true }));
+      blocks.push(p('За детей собственников до 14 лет голосуют родители, усыновители или опекуны, с 14 до 18 лет дети – собственники голосуют с согласия родителей.', { justify: true }));
+      blocks.push(p(`С уважением, инициатор собрания                              ${msgDate}`));
+      return blocks;
+    }
+
+    function saveOssNoticeDocx() {
+      const sel = getSelectedVoting();
+      if (!sel) return;
+      saveDocx(`soobshchenie_oss_${sel.v.voting_number || 'x'}.docx`, buildOssNoticeBlocks(sel.v, sel.house));
+    }
+
+    function fmtDateLong(iso) {
+      if (!iso) return '«___» __________ 20__ г.';
+      try {
+        const d = iso.length <= 10 ? new Date(iso + 'T00:00:00') : new Date(iso);
+        const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} г.`;
+      } catch { return iso; }
+    }
+
+    function fmtDateTimeLong(iso) {
+      if (!iso) return '«___» __________ 20__ г. __:__';
+      try {
+        const d = iso.length <= 10 ? new Date(iso + 'T00:00:00') : new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        const pad = n => String(n).padStart(2, '0');
+        const hasTime = iso.length > 10;
+        const timePart = hasTime ? ` ${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+        return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} г.${timePart}`;
+      } catch { return iso; }
+    }
+
+    function votingFormPhrase(type) {
+      const t = (type || '').toLowerCase();
+      if (t.includes('очно-заоч') || t.includes('очно – заоч') || t.includes('очно-заоч')) {
+        return 'очно – заочного голосования';
+      }
+      if (t.includes('заоч')) return 'заочного голосования';
+      if (t.includes('очн')) return 'очного голосования';
+      return (type || 'голосования').toLowerCase() + (String(type || '').toLowerCase().includes('голосов') ? '' : ' голосования');
+    }
+
+    function buildBallotPageHtml(v, house, o) {
+      const periodStr = (v.period_start || v.period_end)
+        ? `с ${fmtDateLong(v.period_start)} по ${fmtDateLong(v.period_end)}`
+        : 'с ______________ по ______________';
+      const formPhrase = votingFormPhrase(v.voting_type);
+      const address = house.address || '';
+      const hasOwner = !!(o && o.full_name);
+      const fio = hasOwner ? escapeHtml(o.full_name) : '&nbsp;';
+      const apt = (o && o.apartment) ? escapeHtml(String(o.apartment)) : '&nbsp;';
+      const area = (o && o.area != null) ? escapeHtml(fmtNum(o.area)) : '&nbsp;';
+      const docNum = (o && o.doc_number) ? escapeHtml(String(o.doc_number)) : '&nbsp;';
+      const line = (content, minWidth) =>
+        `<span style="border-bottom:1px solid #000;display:inline-block;min-width:${minWidth};padding:0 4px 1px;box-sizing:border-box;vertical-align:bottom">${content}</span>`;
+
+      return `
+        <div style="page-break-after:always;padding:20px 28px;font-family:'Times New Roman',Times,serif;font-size:13px;line-height:1.45">
+          <h2 style="text-align:center;margin:0 0 12px;font-size:16px;font-weight:700">Решения (бюллетень)</h2>
+          <p style="text-align:justify;margin:0 0 10px">
+            Собственника помещения на общем собрании собственников помещений многоквартирного дома
+            ${address ? escapeHtml(address) : line('&nbsp;', '60%')}
+            ${periodStr} в форме ${escapeHtml(formPhrase)}
+          </p>
+          <p style="margin:12px 0 2px">
+            ${line(fio, '65%')}
+            &nbsp;-&nbsp;кв.&nbsp;${line(apt, '4em')}
+          </p>
+          <p style="text-align:center;font-size:11px;margin:0 0 12px;color:#333">(Ф. И. О. собственника)</p>
+          <p style="margin:8px 0">
+            Документ на право собственности №
+            ${line(docNum, '14em')}
+          </p>
+          <p style="margin:8px 0 16px">
+            Площадь помещения, приходящегося на собственника исходя из принадлежащей ему доли
+            ${line(area, '5em')}
+            кв. м.
+          </p>
+          <hr style="margin:12px 0 16px;border:none;border-top:1px solid #999">
+          ${(v.questions || []).map((q, i) => `
+            <div style="margin:0;padding:12px 0${i < (v.questions.length - 1) ? ';border-bottom:1px solid #bbb' : ''}">
+              <p style="margin:0 0 4px"><strong>${i + 1}. ${escapeHtml(q.text)}</strong></p>
+              ${q.resolution ? `<p style="margin:0 0 6px;font-size:12px"><em>Решение:</em> ${escapeHtml(q.resolution)}</p>` : ''}
+              <p style="margin:6px 0 0">
+                ☐ За &nbsp;&nbsp;&nbsp;&nbsp; ☐ Против &nbsp;&nbsp;&nbsp;&nbsp; ☐ Воздержался
+              </p>
+            </div>
+          `).join('')}
+          <div style="margin-top:28px;padding-top:12px;border-top:1px solid #999;font-size:13px">
+            <p style="margin:0 0 4px">
+              Дата голосования «___»___________20__&nbsp;/&nbsp;${line('&nbsp;', '45%')}&nbsp;/&nbsp;${line('&nbsp;', '8em')}
+            </p>
+            <p style="margin:0 0 18px;font-size:11px;color:#333;padding-left:11em">
+              <span style="display:inline-block;min-width:45%;text-align:center">(Ф.И.О. собственника помещения)</span>
+              <span style="display:inline-block;min-width:8em;text-align:center">(подпись)</span>
+            </p>
+            <p style="margin:0 0 4px">
+              Представитель ${line('&nbsp;', '55%')}&nbsp;/&nbsp;${line('&nbsp;', '8em')}
+            </p>
+            <p style="margin:0;font-size:11px;color:#333;padding-left:7em">
+              <span style="display:inline-block;min-width:55%;text-align:center">(Ф.И.О. представителя)</span>
+              <span style="display:inline-block;min-width:8em;text-align:center">(подпись)</span>
+            </p>
+          </div>
+        </div>`;
+    }
+
+    function openBallotPrintWindow(html, title) {
+      openDocumentPrintWindow(html, title);
+    }
+
+    function printOwnerBallots() {
+      const vid = document.getElementById('reportVotingSelect').value;
+      if (!vid) { toast('Выберите голосование'); return; }
+      const v = db.votings.find(x => x.id === vid);
+      const house = db.houses.find(h => h.id === v.house_id);
+      if (!house) { toast('Дом не найден'); return; }
+      const owners = house.owners || [];
+      if (!owners.length) { toast('Нет собственников'); return; }
+      if (!v.questions?.length) { toast('Нет вопросов'); return; }
+      const html = owners.map(o => buildBallotPageHtml(v, house, o)).join('');
+      openBallotPrintWindow(html, 'Бюллетени собственников');
+    }
+
+
+    function printBlankBallot() {
+      const vid = document.getElementById('reportVotingSelect').value;
+      if (!vid) { toast('Выберите голосование'); return; }
+      const v = db.votings.find(x => x.id === vid);
+      const house = db.houses.find(h => h.id === v.house_id);
+      if (!house) { toast('Дом не найден'); return; }
+      if (!v.questions?.length) { toast('Нет вопросов'); return; }
+      const html = buildBallotPageHtml(v, house, null);
+      openBallotPrintWindow(html, 'Пустой бюллетень');
+    }
+
+
+    function shortOwnerName(fullName) {
+      const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return '—';
+      if (parts.length === 1) return parts[0];
+      const fam = parts[0];
+      const inits = parts.slice(1).map(p => (p[0] ? p[0].toUpperCase() + '.' : '')).join('');
+      return fam + (inits ? ' ' + inits : '');
+    }
+
+    function printOssNotice() {
+      const vid = document.getElementById('reportVotingSelect').value;
+      if (!vid) { toast('Выберите голосование'); return; }
+      const v = db.votings.find(x => x.id === vid);
+      if (!v) return;
+      const house = db.houses.find(h => h.id === v.house_id);
+      if (!house) { toast('Дом не найден'); return; }
+
+      const ownersMap = {};
+      (house.owners || []).forEach(o => { ownersMap[o.id] = o; });
+      const initiators = (v.initiator_ids || []).map(id => ownersMap[id]).filter(Boolean);
+      const initText = initiators.length
+        ? initiators.map(o => {
+            const apt = o.apartment != null && o.apartment !== '' ? `кв. N${o.apartment}` : 'кв. N___';
+            return `${shortOwnerName(o.full_name)} – собственника ${apt}`;
+          }).join(', ')
+        : '________________ – собственника кв. N___';
+
+      const formPhrase = votingFormPhrase(v.voting_type);
+      const isOchnoe = v.voting_type === 'Очное' || v.voting_type === 'Очно-заочное';
+      const isZaochnoe = v.voting_type === 'Заочное' || v.voting_type === 'Очно-заочное';
+      const address = house.address || '________________';
+      const msgNum = v.voting_number || '___';
+      const startLong = fmtDateLong(v.period_start);
+      const endLong = fmtDateLong(v.period_end);
+      const msgDate = v.message_date ? fmtDateTimeLong(v.message_date) : '«___» __________ 20__ г. __:__';
+      const meetingPlace = v.meeting_place || '________________';
+      const decisionsPlace = v.decisions_place || '________________';
+
+      let placeBlock = '';
+      if (isOchnoe) {
+        placeBlock += `<p style="text-align:justify;margin:10px 0">
+          Дата проведения собрания в форме совместного присутствия собственников помещений (очного голосования)
+          ${escapeHtml(startLong)} во дворе / в месте: ${escapeHtml(meetingPlace)}.
+          Регистрация участников собрания — до начала собрания.
+        </p>`;
+      }
+      if (isZaochnoe) {
+        placeBlock += `<p style="text-align:justify;margin:10px 0">
+          Приём решений собственников, проголосовавших заочно
+          с ${escapeHtml(startLong)} по ${escapeHtml(endLong)}
+          по адресу (месту): ${escapeHtml(decisionsPlace)}.
+        </p>`;
+      } else if (v.decisions_place) {
+        placeBlock += `<p style="text-align:justify;margin:10px 0">
+          Место приёма решений: ${escapeHtml(decisionsPlace)}.
+        </p>`;
+      }
+
+      const questions = v.questions || [];
+      const agenda = questions.length
+        ? questions.map((q, i) => `<p style="margin:4px 0">${i + 1}. ${escapeHtml(q.text)}</p>`).join('')
+        : '<p style="margin:4px 0">1. ________________</p>';
+
+      const materialsPlace = decisionsPlace || meetingPlace || '________________';
+
+      const html = `
+        <div style="padding:28px 36px;font-family:'Times New Roman',Times,serif;font-size:14px;line-height:1.5;max-width:800px;margin:0 auto">
+          <h2 style="text-align:center;margin:0 0 16px;font-size:16px">Сообщение №${escapeHtml(String(msgNum))}</h2>
+          <p style="text-align:center;margin:0 0 20px;font-weight:600">
+            О проведении общего собрания собственников помещений в многоквартирном доме
+            ${escapeHtml(address)}.
+          </p>
+          <p style="margin:12px 0">Уважаемые собственники жилых помещений!</p>
+          <p style="text-align:justify;margin:10px 0">
+            Сообщаем вам, что по инициативе ${escapeHtml(initText)}
+            созывается общее собрание собственников помещений в форме ${escapeHtml(formPhrase)}
+            для обсуждения вопросов повестки дня и принятия по ним решений.
+          </p>
+          ${placeBlock}
+          <p style="margin:14px 0 6px"><strong>Повестка дня собрания:</strong></p>
+          ${agenda}
+          <p style="text-align:justify;margin:14px 0">
+            Собственники помещений могут ознакомиться с материалами к общему собранию
+            и предложить свои кандидатуры для избрания председателем, секретарём и членами счётной комиссии
+            общего собрания по месту: ${escapeHtml(materialsPlace)}.
+          </p>
+          <p style="text-align:justify;margin:10px 0">
+            Количество голосов, которым обладает каждый собственник на общем собрании,
+            пропорционально его доле в праве собственности на общую площадь жилого помещения.
+          </p>
+          <p style="text-align:justify;margin:10px 0">
+            Решения общего собрания собственников являются обязательными для всех собственников,
+            в том числе для тех, которые не участвовали в голосовании.
+          </p>
+          <p style="text-align:justify;margin:10px 0">
+            Если собственник не может принять личное участие в голосовании, то за него может проголосовать
+            представитель по доверенности на голосование (с образцом доверенности можно ознакомиться
+            по месту: ${escapeHtml(materialsPlace)}).
+          </p>
+          <p style="text-align:justify;margin:10px 0">
+            За детей собственников до 14 лет голосуют родители, усыновители или опекуны,
+            с 14 до 18 лет дети – собственники голосуют с согласия родителей.
+          </p>
+          <p style="margin:28px 0 0;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap">
+            <span>С уважением, инициатор собрания</span>
+            <span>${escapeHtml(msgDate)}</span>
+          </p>
+        </div>`;
+
+      openBallotPrintWindow(html, 'Сообщение о ОСС');
+    }
+
+
+    // ===================== FILE I/O =====================
+
+    function createNewDb() {
+      confirmAction('Новая база данных?', 'Текущие данные будут очищены (но останутся в LocalStorage до перезаписи). Продолжить?', () => {
+        db = { houses: [], votings: [], question_templates: [] };
+        saveToLS();
+        renderHouses();
+        renderVotings();
+        renderTemplates();
+        fillBallotSelects();
+        fillReportSelect();
+        document.getElementById('reportArea').innerHTML = '';
+        toast('Создана пустая база');
+      });
+    }
+
+    function saveJson() {
+      const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `oss_db_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Файл сохранён');
+    }
+
+    function loadJson(ev) {
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data.houses) data.houses = [];
+          if (!data.votings) data.votings = [];
+          if (!data.question_templates) data.question_templates = [];
+          db = data;
+          saveToLS();
+          renderHouses();
+          renderVotings();
+          renderTemplates();
+          fillBallotSelects();
+          fillReportSelect();
+          toast('База загружена');
+        } catch (err) {
+          toast('Ошибка чтения JSON');
+        }
+      };
+      reader.readAsText(file);
+      ev.target.value = '';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ===================== INIT =====================
+    loadFromLS();
+    renderHouses();
+    renderVotings();
+    renderTemplates();
+    updateStatus();
+  </script>
+</body>
+</html>
