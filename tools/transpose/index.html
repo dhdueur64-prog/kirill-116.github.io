@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Транспонировщик таблиц — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --warning: #c27803;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #046c4e; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #9b1c1c; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    main { flex: 1; padding: 16px; max-width: 1100px; margin: 0 auto; width: 100%; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 {
+      font-size: 1rem; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .card h2 .hint { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+    .input-panel label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text);
+    }
+    .input-panel textarea {
+      width: 100%; min-height: 180px; max-height: 40vh;
+      padding: 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem; line-height: 1.45; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      resize: vertical; outline: none;
+    }
+    .input-panel textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    .input-panel .meta {
+      margin-top: 6px; font-size: 0.8rem; color: var(--muted);
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .options-row {
+      display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 10px;
+    }
+    .options-row label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.85rem; cursor: pointer; font-weight: 500;
+    }
+    .options-row select {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.85rem; background: #fff;
+    }
+    .actions-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;
+    }
+    .table-wrap {
+      overflow: auto; max-height: 50vh; border: 1px solid var(--border);
+      border-radius: 8px; margin-top: 10px;
+    }
+    table.data-table {
+      border-collapse: collapse; width: max-content; min-width: 100%;
+      font-size: 0.8rem;
+    }
+    table.data-table th, table.data-table td {
+      border: 1px solid var(--border); padding: 6px 10px;
+      text-align: left; white-space: nowrap; max-width: 280px;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    table.data-table th {
+      background: #f1f5f9; font-weight: 600; position: sticky; top: 0; z-index: 1;
+    }
+    table.data-table tr:nth-child(even) td { background: #f8fafc; }
+    table.data-table tr:hover td { background: #eff6ff; }
+    .empty-state {
+      text-align: center; padding: 32px 16px; color: var(--muted); font-size: 0.9rem;
+    }
+    .status {
+      font-size: 0.85rem; color: var(--muted); margin-top: 8px;
+    }
+    .status strong { color: var(--text); }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e293b; color: #fff; padding: 10px 20px; border-radius: 8px;
+      font-size: 0.9rem; opacity: 0; transition: transform .25s, opacity .25s;
+      z-index: 100; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    footer {
+      text-align: center; padding: 12px; font-size: 0.8rem; color: var(--muted);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>⇄ Транспонировщик таблиц</h1>
+      <div class="actions">
+        <a href="../../index.html" class="btn btn-outline btn-sm">← Все инструменты</a>
+      </div>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2>
+          Исходная таблица
+          <span class="hint">Вставьте из Excel / Google Sheets (Ctrl+V)</span>
+        </h2>
+        <div class="input-panel">
+          <label>
+            Данные
+            <button type="button" class="btn btn-ghost btn-sm" id="btnClearInput">Очистить</button>
+          </label>
+          <textarea id="input" placeholder="Вставьте таблицу сюда…
+Например:
+Имя	Возраст	Город
+Анна	28	Москва
+Борис	35	СПб
+Вера	22	Казань"></textarea>
+          <div class="meta">
+            <span id="inputMeta">—</span>
+            <span id="delimiterHint"></span>
+          </div>
+        </div>
+
+        <div class="options-row">
+          <label>
+            Разделитель:
+            <select id="delimiter">
+              <option value="auto">Авто</option>
+              <option value="\t">Табуляция (Excel)</option>
+              <option value=",">Запятая (CSV)</option>
+              <option value=";">Точка с запятой</option>
+              <option value="|">Вертикальная черта</option>
+            </select>
+          </label>
+          <label>
+            <input type="checkbox" id="trimCells" checked>
+            Обрезать пробелы в ячейках
+          </label>
+        </div>
+
+        <div class="actions-bar">
+          <button type="button" class="btn btn-primary" id="btnTranspose">⇄ Транспонировать</button>
+          <button type="button" class="btn btn-ghost" id="btnPreview">Показать исходную</button>
+        </div>
+      </div>
+
+      <div class="card" id="resultCard" style="display:none;">
+        <h2>
+          Результат
+          <span class="hint" id="resultHint"></span>
+        </h2>
+        <div class="actions-bar" style="margin-top:0; margin-bottom:10px;">
+          <button type="button" class="btn btn-success btn-sm" id="btnCopyTsv">📋 Скопировать TSV</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnCopyCsv">Скопировать CSV</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnUseAsInput">← Использовать как исходную</button>
+        </div>
+        <div class="table-wrap" id="resultTableWrap"></div>
+        <div class="status" id="resultStatus"></div>
+      </div>
+
+      <div class="card" id="previewCard" style="display:none;">
+        <h2>Предпросмотр исходной</h2>
+        <div class="table-wrap" id="previewTableWrap"></div>
+      </div>
+    </main>
+
+    <footer>
+      WorkTools · всё выполняется локально в браузере · <a href="../../index.html">Каталог</a>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+
+    let lastMatrix = null;      // transposed
+    let lastSourceMatrix = null;
+
+    function showToast(msg) {
+      const t = $('#toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    function detectDelimiter(text) {
+      const lines = text.trim().split(/\r?\n/).filter(l => l.length);
+      if (!lines.length) return '\t';
+      const sample = lines.slice(0, 5).join('\n');
+      const counts = {
+        '\t': (sample.match(/\t/g) || []).length,
+        ';': (sample.match(/;/g) || []).length,
+        ',': (sample.match(/,/g) || []).length,
+        '|': (sample.match(/\|/g) || []).length
+      };
+      // Prefer tab if present (Excel paste)
+      if (counts['\t'] > 0) return '\t';
+      let best = ',';
+      let max = counts[','];
+      for (const [d, c] of Object.entries(counts)) {
+        if (c > max) { max = c; best = d; }
+      }
+      return best;
+    }
+
+    function parseTable(text, delimiter, trim) {
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      // drop trailing empty lines
+      while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+      if (!lines.length) return [];
+
+      const delim = delimiter === 'auto' ? detectDelimiter(text) : delimiter;
+      const rows = lines.map(line => {
+        // simple split (no quoted CSV support for speed/simplicity — good enough for Excel paste)
+        let cells = line.split(delim);
+        if (trim) cells = cells.map(c => c.trim());
+        return cells;
+      });
+
+      // normalize width
+      const maxCols = Math.max(...rows.map(r => r.length), 0);
+      return rows.map(r => {
+        while (r.length < maxCols) r.push('');
+        return r;
+      });
+    }
+
+    function transpose(matrix) {
+      if (!matrix.length) return [];
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const out = Array.from({ length: cols }, () => Array(rows).fill(''));
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          out[j][i] = matrix[i][j] ?? '';
+        }
+      }
+      return out;
+    }
+
+    function matrixToTsv(matrix) {
+      return matrix.map(row => row.join('\t')).join('\n');
+    }
+
+    function matrixToCsv(matrix) {
+      return matrix.map(row =>
+        row.map(cell => {
+          const s = String(cell);
+          if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+          return s;
+        }).join(',')
+      ).join('\n');
+    }
+
+    function renderTable(matrix, container) {
+      if (!matrix.length) {
+        container.innerHTML = '<div class="empty-state">Пустая таблица</div>';
+        return;
+      }
+      const table = document.createElement('table');
+      table.className = 'data-table';
+      const thead = document.createElement('thead');
+      const tbody = document.createElement('tbody');
+
+      // first row as header for visual clarity
+      const headerRow = document.createElement('tr');
+      matrix[0].forEach((cell, idx) => {
+        const th = document.createElement('th');
+        th.textContent = cell || `Col ${idx + 1}`;
+        th.title = cell;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+
+      for (let i = 1; i < matrix.length; i++) {
+        const tr = document.createElement('tr');
+        matrix[i].forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          td.title = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+
+      // if only one row — still show it as body without header assumption
+      if (matrix.length === 1) {
+        thead.innerHTML = '';
+        const tr = document.createElement('tr');
+        matrix[0].forEach(cell => {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      container.innerHTML = '';
+      container.appendChild(table);
+    }
+
+    function updateInputMeta() {
+      const text = $('#input').value;
+      if (!text.trim()) {
+        $('#inputMeta').textContent = '—';
+        $('#delimiterHint').textContent = '';
+        return;
+      }
+      const delim = $('#delimiter').value === 'auto'
+        ? detectDelimiter(text)
+        : $('#delimiter').value;
+      const matrix = parseTable(text, $('#delimiter').value, $('#trimCells').checked);
+      const rows = matrix.length;
+      const cols = matrix[0] ? matrix[0].length : 0;
+      $('#inputMeta').textContent = `${rows} × ${cols}`;
+      const names = { '\t': 'табуляция', ',': 'запятая', ';': 'точка с запятой', '|': '|' };
+      $('#delimiterHint').textContent = $('#delimiter').value === 'auto'
+        ? `(авто: ${names[delim] || delim})`
+        : '';
+    }
+
+    function doTranspose() {
+      const text = $('#input').value;
+      if (!text.trim()) {
+        showToast('Вставьте таблицу');
+        return;
+      }
+      const matrix = parseTable(text, $('#delimiter').value, $('#trimCells').checked);
+      if (!matrix.length) {
+        showToast('Не удалось разобрать таблицу');
+        return;
+      }
+      lastSourceMatrix = matrix;
+      lastMatrix = transpose(matrix);
+      const rows = lastMatrix.length;
+      const cols = lastMatrix[0] ? lastMatrix[0].length : 0;
+
+      $('#resultCard').style.display = 'block';
+      $('#resultHint').textContent = `${matrix.length}×${matrix[0].length} → ${rows}×${cols}`;
+      renderTable(lastMatrix, $('#resultTableWrap'));
+      $('#resultStatus').innerHTML = `Строк: <strong>${rows}</strong>, столбцов: <strong>${cols}</strong>`;
+      $('#previewCard').style.display = 'none';
+      showToast('Готово');
+    }
+
+    function showPreview() {
+      const text = $('#input').value;
+      if (!text.trim()) {
+        showToast('Вставьте таблицу');
+        return;
+      }
+      const matrix = parseTable(text, $('#delimiter').value, $('#trimCells').checked);
+      lastSourceMatrix = matrix;
+      $('#previewCard').style.display = 'block';
+      renderTable(matrix, $('#previewTableWrap'));
+    }
+
+    async function copyText(str, label) {
+      try {
+        await navigator.clipboard.writeText(str);
+        showToast(label + ' скопировано');
+      } catch {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = str;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(label + ' скопировано');
+      }
+    }
+
+    // Events
+    $('#input').addEventListener('input', updateInputMeta);
+    $('#input').addEventListener('paste', () => setTimeout(updateInputMeta, 0));
+    $('#delimiter').addEventListener('change', updateInputMeta);
+    $('#trimCells').addEventListener('change', updateInputMeta);
+
+    $('#btnClearInput').addEventListener('click', () => {
+      $('#input').value = '';
+      updateInputMeta();
+      $('#resultCard').style.display = 'none';
+      $('#previewCard').style.display = 'none';
+      lastMatrix = null;
+    });
+
+    $('#btnTranspose').addEventListener('click', doTranspose);
+    $('#btnPreview').addEventListener('click', showPreview);
+
+    $('#btnCopyTsv').addEventListener('click', () => {
+      if (!lastMatrix) return;
+      copyText(matrixToTsv(lastMatrix), 'TSV');
+    });
+    $('#btnCopyCsv').addEventListener('click', () => {
+      if (!lastMatrix) return;
+      copyText(matrixToCsv(lastMatrix), 'CSV');
+    });
+    $('#btnUseAsInput').addEventListener('click', () => {
+      if (!lastMatrix) return;
+      $('#input').value = matrixToTsv(lastMatrix);
+      updateInputMeta();
+      $('#resultCard').style.display = 'none';
+      showToast('Загружено в исходную');
+    });
+
+    // Ctrl+Enter to transpose
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        doTranspose();
+      }
+    });
+
+    updateInputMeta();
+  </script>
+</body>
+</html>

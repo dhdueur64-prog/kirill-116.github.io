@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Поиск дублей строк в таблице — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --warning: #c27803;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #046c4e; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #9b1c1c; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    main { flex: 1; padding: 16px; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 {
+      font-size: 1rem; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .card h2 .hint { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+    .input-panel label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text);
+    }
+    .input-panel textarea {
+      width: 100%; min-height: 200px; max-height: 45vh;
+      padding: 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem; line-height: 1.45; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      resize: vertical; outline: none;
+    }
+    .input-panel textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    .input-panel .meta {
+      margin-top: 6px; font-size: 0.8rem; color: var(--muted);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .options-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media (max-width: 700px) {
+      .options-grid { grid-template-columns: 1fr; }
+    }
+    .opt-group {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .opt-group label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.875rem; cursor: pointer;
+    }
+    .opt-group input[type="checkbox"] { accent-color: var(--primary); }
+    .columns-list {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;
+    }
+    .columns-list label {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 0.8rem; background: #fff; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .columns-list label:hover { border-color: var(--primary); }
+    .columns-list label:has(input:checked) {
+      border-color: var(--primary); background: #eff6ff;
+    }
+    .columns-list input { accent-color: var(--primary); }
+    .preview-table-wrap {
+      overflow: auto; max-height: 220px; border: 1px solid var(--border);
+      border-radius: 8px; margin-top: 8px;
+    }
+    table.data-table {
+      width: 100%; border-collapse: collapse; font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    table.data-table th, table.data-table td {
+      padding: 6px 10px; border-bottom: 1px solid var(--border);
+      border-right: 1px solid #f1f5f9; text-align: left;
+    }
+    table.data-table th {
+      background: #f1f5f9; font-weight: 600; position: sticky; top: 0; z-index: 1;
+    }
+    table.data-table tr:hover td { background: #f8fafc; }
+    table.data-table .dup-row td { background: #fef3c7; }
+    table.data-table .dup-row:hover td { background: #fde68a; }
+    table.data-table .key-col { background: #eff6ff; }
+    table.data-table th.key-col { background: #dbeafe; }
+    .result-stats {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+      font-size: 0.9rem;
+    }
+    .stat-item {
+      background: #f1f5f9; padding: 8px 14px; border-radius: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-item strong { color: var(--primary); }
+    .stat-item.danger strong { color: var(--danger); }
+    .stat-item.success strong { color: var(--success); }
+    .stat-item.warning strong { color: var(--warning); }
+    .empty-state {
+      text-align: center; padding: 32px 16px; color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px;
+    }
+    .alert {
+      padding: 10px 14px; border-radius: 8px; font-size: 0.875rem; margin-bottom: 12px;
+    }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    footer {
+      text-align: center; padding: 12px; font-size: 0.8rem; color: var(--muted);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    .group-card {
+      border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .group-header {
+      background: #fef3c7; padding: 8px 12px; font-size: 0.85rem; font-weight: 600;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .group-header .count {
+      background: var(--warning); color: #fff; padding: 2px 8px; border-radius: 10px;
+      font-size: 0.75rem;
+    }
+    .group-body { overflow: auto; max-height: 200px; }
+    .tabs {
+      display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap;
+    }
+    .tab {
+      padding: 7px 14px; border: 1px solid var(--border); border-radius: 8px;
+      background: #fff; font-size: 0.85rem; cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .tab:hover { background: #f8fafc; }
+    .tab.active {
+      background: #eff6ff; border-color: var(--primary); color: var(--primary); font-weight: 600;
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🔍 Поиск дублей строк в таблице</h1>
+      <div class="actions">
+        <a href="../../index.html" class="btn btn-outline btn-sm">← К каталогу</a>
+        <button class="btn btn-outline btn-sm" id="btnClearAll">Очистить всё</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Input -->
+      <div class="card">
+        <h2>
+          1. Вставьте таблицу
+          <span class="hint">Скопируйте из Excel / Google Sheets / CSV (табуляция, запятая или точка с запятой)</span>
+        </h2>
+        <div class="input-panel">
+          <label>
+            Данные
+            <button class="btn btn-ghost btn-sm" id="btnClear" type="button">Очистить</button>
+          </label>
+          <textarea id="inputData" placeholder="Вставьте данные таблицы сюда…&#10;Первая строка обычно — заголовки столбцов"></textarea>
+          <div class="meta" id="meta">Строк: 0 · Столбцов: 0</div>
+          <div class="preview-table-wrap" id="preview" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="card">
+        <h2>2. Настройки поиска</h2>
+        <div class="options-grid">
+          <div class="opt-group">
+            <label><input type="checkbox" id="optHeader" checked> Первая строка — заголовки</label>
+            <label><input type="checkbox" id="optTrim" checked> Обрезать пробелы по краям</label>
+            <label><input type="checkbox" id="optIgnoreCase"> Не учитывать регистр</label>
+            <label><input type="checkbox" id="optIgnoreEmpty" checked> Игнорировать полностью пустые строки</label>
+          </div>
+          <div>
+            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;">Столбцы для сравнения</div>
+            <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 6px;">
+              Если ничего не выбрано — сравниваются все столбцы (полная строка).
+            </p>
+            <div class="columns-list" id="columnsList">
+              <span style="font-size: 0.8rem; color: var(--muted);">Сначала вставьте таблицу</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="btnFind" type="button">Найти дубли</button>
+        </div>
+        <div id="errorBox" style="display:none;" class="alert alert-error"></div>
+      </div>
+
+      <!-- Result -->
+      <div class="card" id="resultCard" style="display:none;">
+        <h2>
+          3. Результат
+          <span class="hint" id="resultHint"></span>
+        </h2>
+        <div class="result-stats" id="resultStats"></div>
+
+        <div class="tabs" id="resultTabs">
+          <button class="tab active" data-view="groups">Группы дублей</button>
+          <button class="tab" data-view="all">Вся таблица</button>
+          <button class="tab" data-view="unique">Только уникальные</button>
+          <button class="tab" data-view="dups">Только дубли</button>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn btn-success btn-sm" id="btnCopy">📋 Копировать</button>
+          <button class="btn btn-ghost btn-sm" id="btnDownloadTsv">⬇ TSV</button>
+          <button class="btn btn-ghost btn-sm" id="btnDownloadCsv">⬇ CSV</button>
+        </div>
+
+        <div id="viewGroups" class="view-panel active"></div>
+        <div id="viewAll" class="view-panel"></div>
+        <div id="viewUnique" class="view-panel"></div>
+        <div id="viewDups" class="view-panel"></div>
+      </div>
+    </main>
+
+    <footer>
+      WorkTools · данные не покидают ваш браузер ·
+      <a href="../../index.html">Каталог инструментов</a>
+    </footer>
+  </div>
+
+  <script>
+    // ========== State ==========
+    let table = null; // { headers: string[], rows: string[][], rawLines: number[] }
+    let analysis = null; // result of findDuplicates
+
+    // ========== Parsing (same approach as join tool) ==========
+    function detectDelimiter(text) {
+      const firstLine = text.split(/\r?\n/).find(l => l.trim()) || '';
+      const tabs = (firstLine.match(/\t/g) || []).length;
+      const commas = (firstLine.match(/,/g) || []).length;
+      const semis = (firstLine.match(/;/g) || []).length;
+      if (tabs >= commas && tabs >= semis && tabs > 0) return '\t';
+      if (semis > commas && semis > 0) return ';';
+      return ',';
+    }
+
+    function parseCSVLine(line, delim) {
+      const result = [];
+      let current = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === delim && !inQuotes) {
+          result.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+      result.push(current);
+      return result;
+    }
+
+    function parseTable(text, hasHeader) {
+      if (!text || !text.trim()) return null;
+      const delim = detectDelimiter(text);
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      const parsed = [];
+      const lineNumbers = []; // 1-based original line numbers in the pasted text
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim() && document.getElementById('optIgnoreEmpty')?.checked !== false) continue;
+        const cells = parseCSVLine(line, delim).map(c => c.trimEnd()); // keep leading for now
+        // skip completely empty after parse
+        if (cells.every(c => !c.trim()) && document.getElementById('optIgnoreEmpty')?.checked !== false) continue;
+        parsed.push(cells);
+        lineNumbers.push(i + 1);
+      }
+
+      if (parsed.length === 0) return null;
+
+      let headers, rows, rawLines;
+      if (hasHeader && parsed.length >= 1) {
+        headers = parsed[0].map((h, i) => h.trim() || `Столбец ${i + 1}`);
+        rows = parsed.slice(1);
+        rawLines = lineNumbers.slice(1);
+      } else {
+        const colCount = Math.max(...parsed.map(r => r.length));
+        headers = Array.from({ length: colCount }, (_, i) => `Столбец ${i + 1}`);
+        rows = parsed;
+        rawLines = lineNumbers;
+      }
+
+      // Normalize row lengths
+      const colCount = headers.length;
+      rows = rows.map(r => {
+        const nr = r.slice(0, colCount);
+        while (nr.length < colCount) nr.push('');
+        return nr;
+      });
+
+      return { headers, rows, rawLines };
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderPreview(tbl, containerId, highlightKeys = null) {
+      const el = document.getElementById(containerId);
+      if (!tbl || !tbl.rows.length) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      const maxRows = 30;
+      let html = '<table class="data-table"><thead><tr>';
+      html += '<th>#</th>';
+      tbl.headers.forEach((h, i) => {
+        const isKey = highlightKeys && highlightKeys.includes(i);
+        html += `<th class="${isKey ? 'key-col' : ''}">${escapeHtml(h)}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      tbl.rows.slice(0, maxRows).forEach((row, ri) => {
+        html += '<tr>';
+        html += `<td style="color:var(--muted)">${ri + 1}</td>`;
+        row.forEach((cell, ci) => {
+          const isKey = highlightKeys && highlightKeys.includes(ci);
+          html += `<td class="${isKey ? 'key-col' : ''}">${escapeHtml(cell)}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      if (tbl.rows.length > maxRows) {
+        html += `<div style="padding:6px 10px;font-size:0.8rem;color:var(--muted)">… и ещё ${tbl.rows.length - maxRows} строк</div>`;
+      }
+      el.innerHTML = html;
+      el.style.display = 'block';
+    }
+
+    function updateMeta() {
+      const text = document.getElementById('inputData').value;
+      const hasHeader = document.getElementById('optHeader').checked;
+      table = parseTable(text, hasHeader);
+      const meta = document.getElementById('meta');
+      if (!table) {
+        meta.textContent = 'Строк: 0 · Столбцов: 0';
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('columnsList').innerHTML = '<span style="font-size: 0.8rem; color: var(--muted);">Сначала вставьте таблицу</span>';
+        return;
+      }
+      meta.textContent = `Строк данных: ${table.rows.length} · Столбцов: ${table.headers.length}`;
+      renderPreview(table, 'preview');
+      // columns checkboxes
+      const list = document.getElementById('columnsList');
+      list.innerHTML = table.headers.map((h, i) =>
+        `<label><input type="checkbox" class="col-check" value="${i}"> ${escapeHtml(h)}</label>`
+      ).join('');
+    }
+
+    // ========== Duplicate detection ==========
+    function normalizeCell(val, trim, ignoreCase) {
+      let s = String(val ?? '');
+      if (trim) s = s.trim();
+      if (ignoreCase) s = s.toLowerCase();
+      return s;
+    }
+
+    function makeKey(row, colIndices, trim, ignoreCase) {
+      return colIndices.map(i => normalizeCell(row[i], trim, ignoreCase)).join('\0');
+    }
+
+    function findDuplicates() {
+      if (!table || table.rows.length === 0) {
+        throw new Error('Вставьте таблицу с данными');
+      }
+
+      const trim = document.getElementById('optTrim').checked;
+      const ignoreCase = document.getElementById('optIgnoreCase').checked;
+      const checked = Array.from(document.querySelectorAll('.col-check:checked')).map(el => parseInt(el.value, 10));
+      const colIndices = checked.length > 0 ? checked : table.headers.map((_, i) => i);
+
+      // Map key -> list of {rowIndex, row}
+      const map = new Map();
+      table.rows.forEach((row, idx) => {
+        const key = makeKey(row, colIndices, trim, ignoreCase);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push({ rowIndex: idx, row, lineNum: table.rawLines[idx] });
+      });
+
+      const groups = []; // only groups with size > 1
+      let uniqueCount = 0;
+      let dupRowCount = 0;
+
+      map.forEach((items, key) => {
+        if (items.length === 1) {
+          uniqueCount++;
+        } else {
+          groups.push({
+            key,
+            count: items.length,
+            items,
+            // representative row for display
+            sample: items[0].row
+          });
+          dupRowCount += items.length;
+        }
+      });
+
+      // sort groups by count desc, then by first appearance
+      groups.sort((a, b) => b.count - a.count || a.items[0].rowIndex - b.items[0].rowIndex);
+
+      const uniqueRows = [];
+      const dupRows = [];
+      map.forEach(items => {
+        if (items.length === 1) {
+          uniqueRows.push(items[0]);
+        } else {
+          items.forEach(it => dupRows.push(it));
+        }
+      });
+      // keep original order
+      uniqueRows.sort((a, b) => a.rowIndex - b.rowIndex);
+      dupRows.sort((a, b) => a.rowIndex - b.rowIndex);
+
+      return {
+        groups,
+        uniqueCount,
+        dupGroupCount: groups.length,
+        dupRowCount,
+        totalRows: table.rows.length,
+        colIndices,
+        uniqueRows,
+        dupRows,
+        allRows: table.rows.map((row, idx) => ({
+          rowIndex: idx,
+          row,
+          lineNum: table.rawLines[idx],
+          isDup: (map.get(makeKey(row, colIndices, trim, ignoreCase)) || []).length > 1
+        }))
+      };
+    }
+
+    // ========== Rendering results ==========
+    function renderGroups(analysis) {
+      const el = document.getElementById('viewGroups');
+      if (analysis.groups.length === 0) {
+        el.innerHTML = '<div class="empty-state">Дублей не найдено — все строки уникальны 🎉</div>';
+        return;
+      }
+      let html = '';
+      analysis.groups.forEach((g, gi) => {
+        html += `<div class="group-card">
+          <div class="group-header">
+            <span>Группа ${gi + 1}</span>
+            <span class="count">${g.count} раз</span>
+          </div>
+          <div class="group-body">
+            <table class="data-table">
+              <thead><tr><th>Строка №</th>`;
+        table.headers.forEach((h, i) => {
+          const isKey = analysis.colIndices.includes(i);
+          html += `<th class="${isKey ? 'key-col' : ''}">${escapeHtml(h)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        g.items.forEach(it => {
+          html += `<tr class="dup-row"><td style="color:var(--muted)">${it.rowIndex + 1}</td>`;
+          it.row.forEach((cell, ci) => {
+            const isKey = analysis.colIndices.includes(ci);
+            html += `<td class="${isKey ? 'key-col' : ''}">${escapeHtml(cell)}</td>`;
+          });
+          html += '</tr>';
+        });
+        html += '</tbody></table></div></div>';
+      });
+      el.innerHTML = html;
+    }
+
+    function renderTableView(rowsInfo, containerId, highlightDups) {
+      const el = document.getElementById(containerId);
+      if (!rowsInfo || rowsInfo.length === 0) {
+        el.innerHTML = '<div class="empty-state">Нет строк для отображения</div>';
+        return;
+      }
+      let html = '<div class="preview-table-wrap" style="max-height:50vh"><table class="data-table"><thead><tr><th>#</th>';
+      table.headers.forEach((h, i) => {
+        const isKey = analysis && analysis.colIndices.includes(i);
+        html += `<th class="${isKey ? 'key-col' : ''}">${escapeHtml(h)}</th>`;
+      });
+      html += '</tr></thead><tbody>';
+      rowsInfo.forEach(it => {
+        const cls = (highlightDups && it.isDup) ? ' class="dup-row"' : '';
+        html += `<tr${cls}><td style="color:var(--muted)">${it.rowIndex + 1}</td>`;
+        it.row.forEach((cell, ci) => {
+          const isKey = analysis && analysis.colIndices.includes(ci);
+          html += `<td class="${isKey ? 'key-col' : ''}">${escapeHtml(cell)}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      el.innerHTML = html;
+    }
+
+    function showResult(analysis) {
+      document.getElementById('resultCard').style.display = 'block';
+      const stats = document.getElementById('resultStats');
+      stats.innerHTML = `
+        <div class="stat-item"><strong>${analysis.totalRows}</strong> всего строк</div>
+        <div class="stat-item success"><strong>${analysis.uniqueCount}</strong> уникальных</div>
+        <div class="stat-item danger"><strong>${analysis.dupGroupCount}</strong> групп дублей</div>
+        <div class="stat-item warning"><strong>${analysis.dupRowCount}</strong> строк-дублей</div>
+      `;
+      document.getElementById('resultHint').textContent =
+        analysis.dupGroupCount === 0
+          ? 'Дублей нет'
+          : `Найдено ${analysis.dupGroupCount} групп повторяющихся строк`;
+
+      renderGroups(analysis);
+      renderTableView(analysis.allRows, 'viewAll', true);
+      renderTableView(analysis.uniqueRows, 'viewUnique', false);
+      renderTableView(analysis.dupRows, 'viewDups', true);
+
+      // reset to groups tab
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector('.tab[data-view="groups"]').classList.add('active');
+      document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('viewGroups').classList.add('active');
+    }
+
+    // ========== Export helpers ==========
+    function getCurrentViewData() {
+      if (!analysis) return null;
+      const active = document.querySelector('.tab.active')?.dataset.view || 'groups';
+      if (active === 'unique') {
+        return { headers: table.headers, rows: analysis.uniqueRows.map(r => r.row) };
+      }
+      if (active === 'dups') {
+        return { headers: table.headers, rows: analysis.dupRows.map(r => r.row) };
+      }
+      if (active === 'all') {
+        return { headers: table.headers, rows: table.rows };
+      }
+      // groups: export only duplicate rows (same as dups)
+      return { headers: table.headers, rows: analysis.dupRows.map(r => r.row) };
+    }
+
+    function toTSV(headers, rows) {
+      const escape = v => {
+        const s = String(v ?? '');
+        if (/[\t\n\r"]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+      return [headers.map(escape).join('\t'), ...rows.map(r => r.map(escape).join('\t'))].join('\n');
+    }
+
+    function toCSV(headers, rows) {
+      const escape = v => {
+        const s = String(v ?? '');
+        if (/[,\n\r"]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+      return [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+    }
+
+    function download(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ========== Events ==========
+    document.getElementById('inputData').addEventListener('input', updateMeta);
+    document.getElementById('optHeader').addEventListener('change', updateMeta);
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+      document.getElementById('inputData').value = '';
+      updateMeta();
+      document.getElementById('resultCard').style.display = 'none';
+      analysis = null;
+    });
+
+    document.getElementById('btnClearAll').addEventListener('click', () => {
+      document.getElementById('inputData').value = '';
+      document.getElementById('optHeader').checked = true;
+      document.getElementById('optTrim').checked = true;
+      document.getElementById('optIgnoreCase').checked = false;
+      document.getElementById('optIgnoreEmpty').checked = true;
+      updateMeta();
+      document.getElementById('resultCard').style.display = 'none';
+      analysis = null;
+      document.getElementById('errorBox').style.display = 'none';
+    });
+
+    document.getElementById('btnFind').addEventListener('click', () => {
+      const err = document.getElementById('errorBox');
+      err.style.display = 'none';
+      try {
+        // re-parse with current options
+        updateMeta();
+        analysis = findDuplicates();
+        showResult(analysis);
+        document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) {
+        err.textContent = e.message || String(e);
+        err.style.display = 'block';
+        document.getElementById('resultCard').style.display = 'none';
+      }
+    });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+        const view = tab.dataset.view;
+        document.getElementById('view' + view.charAt(0).toUpperCase() + view.slice(1)).classList.add('active');
+      });
+    });
+
+    document.getElementById('btnCopy').addEventListener('click', async () => {
+      const data = getCurrentViewData();
+      if (!data || data.rows.length === 0) return;
+      const text = toTSV(data.headers, data.rows);
+      try {
+        await navigator.clipboard.writeText(text);
+        const btn = document.getElementById('btnCopy');
+        const old = btn.textContent;
+        btn.textContent = '✓ Скопировано';
+        setTimeout(() => { btn.textContent = old; }, 1500);
+      } catch {
+        alert('Не удалось скопировать в буфер обмена');
+      }
+    });
+
+    document.getElementById('btnDownloadTsv').addEventListener('click', () => {
+      const data = getCurrentViewData();
+      if (!data) return;
+      download('duplicates.tsv', toTSV(data.headers, data.rows), 'text/tab-separated-values');
+    });
+
+    document.getElementById('btnDownloadCsv').addEventListener('click', () => {
+      const data = getCurrentViewData();
+      if (!data) return;
+      download('duplicates.csv', toCSV(data.headers, data.rows), 'text/csv');
+    });
+
+    // initial
+    updateMeta();
+  </script>
+</body>
+</html>

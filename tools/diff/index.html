@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Умное сравнение текстов — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --warning: #c27803;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+      --diff-a-bg: #fee2e2;
+      --diff-a-text: #991b1b;
+      --diff-b-bg: #dcfce7;
+      --diff-b-text: #166534;
+      --diff-block-bg: #f8fafc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #046c4e; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #9b1c1c; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-warning { background: var(--warning); color: #fff; }
+    .btn-warning:hover { background: #a16207; }
+    main { flex: 1; padding: 16px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { font-size: 1rem; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .mode-toggle {
+      display: inline-flex; background: #e2e8f0; border-radius: 8px; padding: 3px;
+    }
+    .mode-toggle button {
+      padding: 6px 14px; border: none; background: transparent; border-radius: 6px;
+      font-size: 0.85rem; font-weight: 500; color: var(--muted); cursor: pointer;
+      transition: all .15s;
+    }
+    .mode-toggle button.active {
+      background: #fff; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,.1);
+    }
+    .inputs-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 800px) {
+      .inputs-grid { grid-template-columns: 1fr; }
+    }
+    .input-panel label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text);
+    }
+    .input-panel .text-editor {
+      width: 100%; min-height: 220px; max-height: 45vh; overflow: auto;
+      padding: 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem; line-height: 1.55; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      white-space: pre-wrap; word-break: break-word; outline: none;
+    }
+    .input-panel .text-editor:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    .input-panel .text-editor:empty:before {
+      content: attr(data-placeholder);
+      color: #94a3b8; pointer-events: none;
+    }
+    .input-panel .text-editor .hl-line {
+      background: #fde047;
+      border-radius: 3px;
+      box-shadow: 0 0 0 2px #facc15;
+      display: inline;
+    }
+    .input-panel .text-editor div {
+      min-height: 1.55em;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px;
+    }
+    .stats {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;
+      font-size: 0.9rem;
+    }
+    .stat-item {
+      background: #f1f5f9; padding: 6px 12px; border-radius: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-item strong { color: var(--primary); }
+    .stat-item.diff-count strong { color: var(--danger); }
+    .result-wrap {
+      position: relative;
+    }
+    .nav-diff {
+      position: sticky; top: 8px; z-index: 20;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+      background: rgba(255,255,255,.95); backdrop-filter: blur(6px);
+      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 10px;
+    }
+    .nav-diff .counter {
+      font-size: 0.85rem; color: var(--muted); margin-left: auto;
+    }
+    .result-view {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem; line-height: 1.45;
+      word-break: break-word;
+      background: #fafbfc; border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px; min-height: 120px; max-height: 55vh; overflow: auto;
+      outline: none;
+    }
+    .result-view .line {
+      display: block; padding: 0 0 0 6px; border-left: 3px solid transparent;
+      margin: 0; line-height: 1.45; min-height: 1.45em;
+    }
+    .result-view .line.same { color: var(--text); }
+    .result-view .line.changed {
+      background: var(--diff-block-bg); border-left-color: var(--warning);
+    }
+    .result-view .line.added {
+      background: #ecfdf5; border-left-color: var(--success);
+    }
+    .result-view .line.removed {
+      background: #fef2f2; border-left-color: var(--danger);
+    }
+    .result-view .diff-a {
+      background: var(--diff-a-bg); color: var(--diff-a-text);
+      border-radius: 2px; padding: 0 2px; text-decoration: line-through;
+    }
+    .result-view .diff-b {
+      background: var(--diff-b-bg); color: var(--diff-b-text);
+      border-radius: 2px; padding: 0 2px; margin-left: 2px;
+    }
+    .result-view .diff-fragment {
+      display: inline;
+    }
+    .result-view .diff-marker {
+      display: inline-flex; align-items: center; gap: 4px; margin: 0 2px;
+      vertical-align: middle;
+    }
+    .diff-block {
+      margin: 3px 0; padding: 6px 8px; border-radius: 6px;
+      border: 1px solid var(--border); background: #fff;
+      scroll-margin-top: 60px;
+    }
+    .diff-block.current {
+      outline: 2px solid var(--primary); outline-offset: 0;
+    }
+    .diff-block-header {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      margin-bottom: 4px; font-size: 0.75rem; color: var(--muted);
+    }
+    .diff-block-header .tag {
+      background: #e2e8f0; padding: 1px 6px; border-radius: 3px; font-weight: 500;
+    }
+    .diff-block-body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem; line-height: 1.4;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .diff-block .side-a, .diff-block .side-b {
+      padding: 3px 6px; border-radius: 4px; margin-bottom: 2px;
+    }
+    .diff-block .side-a { background: var(--diff-a-bg); color: var(--diff-a-text); }
+    .diff-block .side-b { background: var(--diff-b-bg); color: var(--diff-b-text); }
+    .diff-block .side-label {
+      font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+      opacity: .7; margin-bottom: 0; display: inline; margin-right: 6px;
+    }
+    .choose-btns {
+      display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;
+    }
+    .choose-btns .btn-sm {
+      padding: 3px 8px; font-size: 0.75rem;
+    }
+    .merged-result {
+      margin-top: 14px;
+    }
+    .merged-result textarea {
+      width: 100%; min-height: 160px; padding: 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem; line-height: 1.55; resize: vertical;
+    }
+    .hint {
+      font-size: 0.8rem; color: var(--muted); margin-top: 8px;
+    }
+    .empty-state {
+      text-align: center; padding: 24px 16px; color: var(--muted);
+    }
+    .options-row {
+      display: flex; flex-wrap: wrap; gap: 14px; align-items: center;
+      margin-bottom: 12px; font-size: 0.85rem;
+    }
+    .options-row label {
+      display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted);
+    }
+    .options-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+    .footer-note {
+      text-align: center; font-size: 0.75rem; color: var(--muted); padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>📝 Умное сравнение текстов</h1>
+      <div class="actions">
+        <a href="../../index.html" class="btn btn-outline btn-sm">← WorkTools</a>
+        <button class="btn btn-outline btn-sm" id="btnClear">Очистить</button>
+        <button class="btn btn-outline btn-sm" id="btnSwap">⇄ Поменять</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="card">
+        <div class="toolbar">
+          <div class="mode-toggle" id="modeToggle">
+            <button type="button" data-mode="compare" class="active">Сравнить</button>
+            <button type="button" data-mode="merge">Объединить</button>
+          </div>
+          <button class="btn btn-primary" id="btnRun">▶ Выполнить</button>
+          <button class="btn btn-success" id="btnAutoMerge" style="display:none;" title="Сохраняет содержимое обоих текстов: совпадения один раз, уникальные строки из А и Б, при изменениях — обе версии">⚡ Объединить автоматически</button>
+          <button class="btn btn-ghost btn-sm" id="btnCopyResult" style="display:none;">📋 Копировать результат</button>
+        </div>
+
+        <div class="options-row">
+          <label><input type="checkbox" id="optIgnoreCase"> Игнорировать регистр</label>
+          <label><input type="checkbox" id="optIgnoreWS"> Игнорировать пробелы в начале/конце строк</label>
+          <label><input type="checkbox" id="optWordLevel" checked> Сравнение по словам (внутри строк)</label>
+        </div>
+
+        <div class="inputs-grid">
+          <div class="input-panel">
+            <label>
+              <span>Текст А</span>
+              <span style="font-weight:400;color:var(--muted);font-size:0.75rem;" id="lenA">0 симв.</span>
+            </label>
+            <div id="textA" class="text-editor" contenteditable="true" data-placeholder="Вставьте или введите первый текст..." role="textbox" aria-multiline="true"></div>
+          </div>
+          <div class="input-panel">
+            <label>
+              <span>Текст Б</span>
+              <span style="font-weight:400;color:var(--muted);font-size:0.75rem;" id="lenB">0 симв.</span>
+            </label>
+            <div id="textB" class="text-editor" contenteditable="true" data-placeholder="Вставьте или введите второй текст..." role="textbox" aria-multiline="true"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="resultCard" style="display:none;">
+        <h2>
+          <span>Результат</span>
+          <span class="stats" id="statsBar"></span>
+        </h2>
+
+        <div class="result-wrap">
+          <div class="nav-diff" id="navDiff" style="display:none;">
+            <button class="btn btn-ghost btn-sm" id="btnPrevDiff">↑ Предыдущее отличие</button>
+            <button class="btn btn-ghost btn-sm" id="btnNextDiff">↓ Следующее отличие</button>
+            <span class="counter" id="diffCounter">0 / 0</span>
+          </div>
+
+          <div id="resultView" class="result-view" tabindex="-1"></div>
+        </div>
+
+        <div class="merged-result" id="mergedSection" style="display:none;">
+          <h2 style="margin-top:16px;">Итоговый объединённый текст</h2>
+          <p class="hint" id="autoMergeHint" style="display:none;">
+            <strong>Объединить автоматически:</strong> проходит по отличиям и сохраняет содержимое обоих текстов.
+            Совпадающие строки — один раз; строки только из А или только из Б — включаются;
+            изменённые строки — берутся обе (сначала А, затем Б), чтобы ничего не потерялось.
+          </p>
+          <textarea id="mergedText" placeholder="Итоговый текст появится здесь..."></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="btnCopyMerged">📋 Копировать</button>
+            <button class="btn btn-ghost btn-sm" id="btnApplyMerged">Применить как Текст А</button>
+          </div>
+        </div>
+      </div>
+
+      <p class="footer-note">Все данные обрабатываются только в вашем браузере. Ничего не отправляется на сервер.</p>
+    </main>
+  </div>
+
+  <script>
+(function () {
+  'use strict';
+
+  // ——— DOM ———
+  const textA = document.getElementById('textA');
+  const textB = document.getElementById('textB');
+  const lenA = document.getElementById('lenA');
+  const lenB = document.getElementById('lenB');
+  const modeToggle = document.getElementById('modeToggle');
+  const btnRun = document.getElementById('btnRun');
+  const btnAutoMerge = document.getElementById('btnAutoMerge');
+  const btnClear = document.getElementById('btnClear');
+  const btnSwap = document.getElementById('btnSwap');
+  const btnCopyResult = document.getElementById('btnCopyResult');
+  const resultCard = document.getElementById('resultCard');
+  const resultView = document.getElementById('resultView');
+  const navDiff = document.getElementById('navDiff');
+  const btnPrevDiff = document.getElementById('btnPrevDiff');
+  const btnNextDiff = document.getElementById('btnNextDiff');
+  const diffCounter = document.getElementById('diffCounter');
+  const statsBar = document.getElementById('statsBar');
+  const mergedSection = document.getElementById('mergedSection');
+  const mergedText = document.getElementById('mergedText');
+  const autoMergeHint = document.getElementById('autoMergeHint');
+  const btnCopyMerged = document.getElementById('btnCopyMerged');
+  const btnApplyMerged = document.getElementById('btnApplyMerged');
+  const optIgnoreCase = document.getElementById('optIgnoreCase');
+  const optIgnoreWS = document.getElementById('optIgnoreWS');
+  const optWordLevel = document.getElementById('optWordLevel');
+
+  let mode = 'compare'; // 'compare' | 'merge'
+  let currentDiffs = []; // array of DOM elements
+  let diffMeta = []; // parallel: { ai, bi, aText, bText }
+  let currentDiffIndex = -1;
+  let lastDiffResult = null; // for merge choices
+  let selections = {}; // diffIndex -> 'A' | 'B'
+
+  // ——— Text editors (contenteditable) ———
+  function getEditorText(el) {
+    // Structured line divs (after highlight or scroll render)
+    const children = [...el.childNodes];
+    if (children.length && children.every(n => n.nodeType === 1 && n.tagName === 'DIV')) {
+      return children.map(d => (d.innerText || '').replace(/\n$/, '')).join('\n');
+    }
+    // Plain / mixed contenteditable
+    let text = '';
+    const walk = (node) => {
+      if (node.nodeType === 3) {
+        text += node.nodeValue;
+      } else if (node.nodeName === 'BR') {
+        text += '\n';
+      } else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
+        if (text.length && !text.endsWith('\n')) text += '\n';
+        node.childNodes.forEach(walk);
+      } else if (node.nodeType === 1) {
+        node.childNodes.forEach(walk);
+      }
+    };
+    el.childNodes.forEach(walk);
+    return text.replace(/\u00a0/g, ' ');
+  }
+
+  function setEditorText(el, plain) {
+    // Plain text only — no highlight structure
+    el.textContent = plain || '';
+  }
+
+  function updateLens() {
+    const a = getEditorText(textA);
+    const b = getEditorText(textB);
+    lenA.textContent = a.length + ' симв.';
+    lenB.textContent = b.length + ' симв.';
+  }
+
+  function clearHighlights() {
+    // Restore plain text (strip yellow marks) while keeping content
+    if (textA.querySelector('.hl-line')) setEditorText(textA, getEditorText(textA));
+    if (textB.querySelector('.hl-line')) setEditorText(textB, getEditorText(textB));
+  }
+
+  /** Render editor with a single yellow-highlighted line (0-based) and scroll to it */
+  function highlightEditorLine(el, lineIndex) {
+    const plain = getEditorText(el);
+    const lines = plain.split('\n');
+    if (lineIndex == null || lineIndex < 0 || lineIndex >= lines.length) {
+      setEditorText(el, plain);
+      return;
+    }
+    const html = lines.map((line, i) => {
+      const safe = escapeHtml(line);
+      if (i === lineIndex) {
+        return '<div><span class="hl-line">' + (safe || '&nbsp;') + '</span></div>';
+      }
+      return '<div>' + (safe || '&nbsp;') + '</div>';
+    }).join('');
+    el.innerHTML = html;
+    const mark = el.querySelector('.hl-line');
+    if (mark) {
+      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  textA.addEventListener('input', () => {
+    // If user edits while highlighted, keep working with live content
+    updateLens();
+  });
+  textB.addEventListener('input', updateLens);
+
+  // On focus for real editing after highlight — unwrap marks to plain editable text
+  textA.addEventListener('focus', () => {
+    if (textA.querySelector('.hl-line')) setEditorText(textA, getEditorText(textA));
+  });
+  textB.addEventListener('focus', () => {
+    if (textB.querySelector('.hl-line')) setEditorText(textB, getEditorText(textB));
+  });
+
+  // Paste as plain text
+  function onPastePlain(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  }
+  textA.addEventListener('paste', onPastePlain);
+  textB.addEventListener('paste', onPastePlain);
+
+  modeToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-mode]');
+    if (!btn) return;
+    modeToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    btnAutoMerge.style.display = mode === 'merge' ? '' : 'none';
+    if (resultCard.style.display !== 'none') run();
+  });
+
+  btnClear.addEventListener('click', () => {
+    setEditorText(textA, '');
+    setEditorText(textB, '');
+    updateLens();
+    resultCard.style.display = 'none';
+    resultView.innerHTML = '';
+    mergedText.value = '';
+    currentDiffs = [];
+    diffMeta = [];
+    currentDiffIndex = -1;
+    lastDiffResult = null;
+    selections = {};
+  });
+
+  btnSwap.addEventListener('click', () => {
+    const t = getEditorText(textA);
+    setEditorText(textA, getEditorText(textB));
+    setEditorText(textB, t);
+    updateLens();
+    if (resultCard.style.display !== 'none') run();
+  });
+
+  btnRun.addEventListener('click', run);
+  btnAutoMerge.addEventListener('click', () => {
+    runAutoMerge();
+  });
+
+  btnPrevDiff.addEventListener('click', () => goDiff(-1));
+  btnNextDiff.addEventListener('click', () => goDiff(1));
+
+  btnCopyResult.addEventListener('click', () => {
+    const plain = resultView.innerText || '';
+    navigator.clipboard.writeText(plain).then(() => {
+      btnCopyResult.textContent = '✓ Скопировано';
+      setTimeout(() => { btnCopyResult.textContent = '📋 Копировать результат'; }, 1500);
+    });
+  });
+
+  btnCopyMerged.addEventListener('click', () => {
+    navigator.clipboard.writeText(mergedText.value).then(() => {
+      btnCopyMerged.textContent = '✓ Скопировано';
+      setTimeout(() => { btnCopyMerged.textContent = '📋 Копировать'; }, 1500);
+    });
+  });
+
+  btnApplyMerged.addEventListener('click', () => {
+    setEditorText(textA, mergedText.value);
+    updateLens();
+  });
+
+  // ——— Diff core (line-level LCS + optional word-level) ———
+  function normalizeLine(line) {
+    let s = line;
+    if (optIgnoreWS.checked) s = s.trim();
+    if (optIgnoreCase.checked) s = s.toLowerCase();
+    return s;
+  }
+
+  function linesEqual(a, b) {
+    return normalizeLine(a) === normalizeLine(b);
+  }
+
+  // Simple LCS-based line diff
+  function diffLines(aLines, bLines) {
+    const n = aLines.length;
+    const m = bLines.length;
+    // DP table for LCS length
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = 1; i <= n; i++) {
+      for (let j = 1; j <= m; j++) {
+        if (linesEqual(aLines[i - 1], bLines[j - 1])) {
+          dp[i][j] = dp[i - 1][j - 1] + 1;
+        } else {
+          dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
+      }
+    }
+    // Backtrack
+    const ops = [];
+    let i = n, j = m;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && linesEqual(aLines[i - 1], bLines[j - 1])) {
+        ops.push({ type: 'equal', a: aLines[i - 1], b: bLines[j - 1], ai: i - 1, bi: j - 1 });
+        i--; j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        ops.push({ type: 'insert', b: bLines[j - 1], bi: j - 1 });
+        j--;
+      } else {
+        ops.push({ type: 'delete', a: aLines[i - 1], ai: i - 1 });
+        i--;
+      }
+    }
+    ops.reverse();
+
+    // Merge consecutive delete+insert into 'change'
+    const merged = [];
+    for (let k = 0; k < ops.length; k++) {
+      const op = ops[k];
+      if (op.type === 'delete' && k + 1 < ops.length && ops[k + 1].type === 'insert') {
+        merged.push({
+          type: 'change',
+          a: op.a, b: ops[k + 1].b,
+          ai: op.ai, bi: ops[k + 1].bi
+        });
+        k++;
+      } else {
+        merged.push(op);
+      }
+    }
+    return merged;
+  }
+
+  // Word / char level for a changed line pair
+  function diffTokens(aStr, bStr) {
+    const useWords = optWordLevel.checked;
+    let aTok, bTok;
+    if (useWords) {
+      // split keeping separators
+      aTok = aStr.split(/(\s+)/).filter(t => t.length);
+      bTok = bStr.split(/(\s+)/).filter(t => t.length);
+    } else {
+      aTok = aStr.split('');
+      bTok = bStr.split('');
+    }
+    const n = aTok.length, m = bTok.length;
+    if (n * m > 40000) {
+      // too large — treat whole as different
+      return [{ type: 'change', a: aStr, b: bStr }];
+    }
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = 1; i <= n; i++) {
+      for (let j = 1; j <= m; j++) {
+        const eq = optIgnoreCase.checked
+          ? aTok[i - 1].toLowerCase() === bTok[j - 1].toLowerCase()
+          : aTok[i - 1] === bTok[j - 1];
+        if (eq) dp[i][j] = dp[i - 1][j - 1] + 1;
+        else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+    const ops = [];
+    let i = n, j = m;
+    while (i > 0 || j > 0) {
+      const eq = i > 0 && j > 0 && (optIgnoreCase.checked
+        ? aTok[i - 1].toLowerCase() === bTok[j - 1].toLowerCase()
+        : aTok[i - 1] === bTok[j - 1]);
+      if (eq) {
+        ops.push({ type: 'equal', a: aTok[i - 1], b: bTok[j - 1] });
+        i--; j--;
+      } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+        ops.push({ type: 'insert', b: bTok[j - 1] });
+        j--;
+      } else {
+        ops.push({ type: 'delete', a: aTok[i - 1] });
+        i--;
+      }
+    }
+    ops.reverse();
+    // compact consecutive
+    const out = [];
+    for (const op of ops) {
+      const last = out[out.length - 1];
+      if (last && last.type === op.type) {
+        if (op.type === 'equal' || op.type === 'delete') last.a = (last.a || '') + (op.a || '');
+        if (op.type === 'equal' || op.type === 'insert') last.b = (last.b || '') + (op.b || '');
+        if (op.type === 'change') { /* n/a */ }
+      } else if (op.type === 'delete' && out.length && out[out.length - 1].type === 'insert') {
+        // leave separate or merge? keep separate for highlight
+        out.push(op);
+      } else {
+        out.push({ ...op });
+      }
+    }
+    // further: turn adjacent delete+insert into change
+    const final = [];
+    for (let k = 0; k < out.length; k++) {
+      if (out[k].type === 'delete' && k + 1 < out.length && out[k + 1].type === 'insert') {
+        final.push({ type: 'change', a: out[k].a, b: out[k + 1].b });
+        k++;
+      } else {
+        final.push(out[k]);
+      }
+    }
+    return final;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderInlineTokens(tokens) {
+    let html = '';
+    for (const t of tokens) {
+      if (t.type === 'equal') {
+        html += escapeHtml(t.a);
+      } else if (t.type === 'delete') {
+        html += '<span class="diff-a">' + escapeHtml(t.a) + '</span>';
+      } else if (t.type === 'insert') {
+        html += '<span class="diff-b">(' + escapeHtml(t.b) + ')</span>';
+      } else if (t.type === 'change') {
+        html += '<span class="diff-a">' + escapeHtml(t.a) + '</span>';
+        html += '<span class="diff-b">(' + escapeHtml(t.b) + ')</span>';
+      }
+    }
+    return html;
+  }
+
+  // ——— Main run ———
+  function run() {
+    clearHighlights();
+    const aRaw = getEditorText(textA);
+    const bRaw = getEditorText(textB);
+    const aLines = aRaw.split('\n');
+    const bLines = bRaw.split('\n');
+
+    const ops = diffLines(aLines, bLines);
+    lastDiffResult = { ops, aLines, bLines };
+    selections = {};
+
+    let diffCount = 0;
+    let equalCount = 0;
+    let insertCount = 0;
+    let deleteCount = 0;
+    let changeCount = 0;
+
+    const isMerge = mode === 'merge';
+    let html = '';
+    let diffIdx = 0;
+    const blockIds = [];
+    const metaList = [];
+
+    for (const op of ops) {
+      if (op.type === 'equal') {
+        equalCount++;
+        html += '<div class="line same">' + escapeHtml(op.a) + '</div>';
+      } else if (op.type === 'delete') {
+        deleteCount++;
+        diffCount++;
+        const id = 'diff-' + diffIdx;
+        blockIds.push(id);
+        metaList.push({ ai: op.ai ?? 0, bi: null, aText: op.a, bText: null });
+        if (isMerge) {
+          html += `<div class="diff-block" id="${id}" data-idx="${diffIdx}" data-type="delete">
+            <div class="diff-block-header">
+              <span class="tag">Только в А</span>
+              <span>стр. ${(op.ai ?? 0) + 1}</span>
+            </div>
+            <div class="diff-block-body">
+              <div class="side-a"><span class="side-label">А</span>${escapeHtml(op.a) || ' '}</div>
+            </div>
+            <div class="choose-btns">
+              <button class="btn btn-sm btn-danger choose-a" data-idx="${diffIdx}">Взять А</button>
+              <button class="btn btn-sm btn-ghost choose-b" data-idx="${diffIdx}">Пропустить</button>
+            </div>
+          </div>`;
+          selections[diffIdx] = 'A'; // default keep A
+        } else {
+          html += `<div class="line removed" id="${id}" data-idx="${diffIdx}">
+            <span class="diff-a">${escapeHtml(op.a)}</span>
+            <span class="diff-b">(нет в Б)</span>
+          </div>`;
+        }
+        diffIdx++;
+      } else if (op.type === 'insert') {
+        insertCount++;
+        diffCount++;
+        const id = 'diff-' + diffIdx;
+        blockIds.push(id);
+        metaList.push({ ai: null, bi: op.bi ?? 0, aText: null, bText: op.b });
+        if (isMerge) {
+          html += `<div class="diff-block" id="${id}" data-idx="${diffIdx}" data-type="insert">
+            <div class="diff-block-header">
+              <span class="tag">Только в Б</span>
+              <span>стр. ${(op.bi ?? 0) + 1}</span>
+            </div>
+            <div class="diff-block-body">
+              <div class="side-b"><span class="side-label">Б</span>${escapeHtml(op.b) || ' '}</div>
+            </div>
+            <div class="choose-btns">
+              <button class="btn btn-sm btn-ghost choose-a" data-idx="${diffIdx}">Пропустить</button>
+              <button class="btn btn-sm btn-success choose-b" data-idx="${diffIdx}">Взять Б</button>
+            </div>
+          </div>`;
+          selections[diffIdx] = 'B'; // default take B (new)
+        } else {
+          html += `<div class="line added" id="${id}" data-idx="${diffIdx}">
+            <span class="diff-b">(+ ${escapeHtml(op.b)})</span>
+          </div>`;
+        }
+        diffIdx++;
+      } else if (op.type === 'change') {
+        changeCount++;
+        diffCount++;
+        const id = 'diff-' + diffIdx;
+        blockIds.push(id);
+        metaList.push({ ai: op.ai ?? 0, bi: op.bi ?? 0, aText: op.a, bText: op.b });
+        const tokens = diffTokens(op.a, op.b);
+        const inline = renderInlineTokens(tokens);
+
+        if (isMerge) {
+          html += `<div class="diff-block" id="${id}" data-idx="${diffIdx}" data-type="change">
+            <div class="diff-block-header">
+              <span class="tag">Изменено</span>
+              <span>А: стр. ${(op.ai ?? 0) + 1} · Б: стр. ${(op.bi ?? 0) + 1}</span>
+            </div>
+            <div class="diff-block-body">
+              <div class="side-a"><span class="side-label">А</span>${escapeHtml(op.a) || ' '}</div>
+              <div class="side-b"><span class="side-label">Б</span>${escapeHtml(op.b) || ' '}</div>
+            </div>
+            <div class="choose-btns">
+              <button class="btn btn-sm btn-danger choose-a" data-idx="${diffIdx}">Взять А</button>
+              <button class="btn btn-sm btn-success choose-b" data-idx="${diffIdx}">Взять Б</button>
+            </div>
+          </div>`;
+          selections[diffIdx] = 'A';
+        } else {
+          html += `<div class="line changed" id="${id}" data-idx="${diffIdx}">
+            ${inline}
+          </div>`;
+        }
+        diffIdx++;
+      }
+    }
+
+    resultView.innerHTML = html || '<div class="empty-state">Тексты идентичны</div>';
+    resultCard.style.display = '';
+
+    // stats
+    statsBar.innerHTML = `
+      <span class="stat-item diff-count"><strong>${diffCount}</strong> отличающихся строк</span>
+      <span class="stat-item"><strong>${equalCount}</strong> совпадений</span>
+      <span class="stat-item" style="color:var(--danger)"><strong>${deleteCount}</strong> только в А</span>
+      <span class="stat-item" style="color:var(--success)"><strong>${insertCount}</strong> только в Б</span>
+      <span class="stat-item" style="color:var(--warning)"><strong>${changeCount}</strong> изменено</span>
+    `;
+
+    // nav
+    currentDiffs = blockIds.map(id => document.getElementById(id)).filter(Boolean);
+    diffMeta = metaList;
+    currentDiffIndex = currentDiffs.length ? 0 : -1;
+    updateNavUI();
+    navDiff.style.display = currentDiffs.length ? '' : 'none';
+    btnCopyResult.style.display = '';
+
+    // merge UI
+    if (isMerge) {
+      mergedSection.style.display = '';
+      autoMergeHint.style.display = 'none';
+      rebuildMergedFromSelections();
+      // bind choose buttons
+      resultView.querySelectorAll('.choose-a').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = +btn.dataset.idx;
+          selections[idx] = 'A';
+          highlightChoice(idx);
+          rebuildMergedFromSelections();
+        });
+      });
+      resultView.querySelectorAll('.choose-b').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = +btn.dataset.idx;
+          selections[idx] = 'B';
+          highlightChoice(idx);
+          rebuildMergedFromSelections();
+        });
+      });
+      // initial highlight
+      Object.keys(selections).forEach(k => highlightChoice(+k));
+    } else {
+      mergedSection.style.display = 'none';
+    }
+
+    if (currentDiffs.length) {
+      currentDiffs[0].classList.add('current');
+      // don't force scroll on first run
+    }
+  }
+
+  function highlightChoice(idx) {
+    const block = document.getElementById('diff-' + idx);
+    if (!block) return;
+    const aBtn = block.querySelector('.choose-a');
+    const bBtn = block.querySelector('.choose-b');
+    if (selections[idx] === 'A') {
+      aBtn.classList.add('btn-primary');
+      aBtn.classList.remove('btn-danger', 'btn-ghost');
+      bBtn.classList.remove('btn-primary', 'btn-success');
+      bBtn.classList.add('btn-ghost');
+    } else {
+      bBtn.classList.add('btn-primary');
+      bBtn.classList.remove('btn-success', 'btn-ghost');
+      aBtn.classList.remove('btn-primary', 'btn-danger');
+      aBtn.classList.add('btn-ghost');
+    }
+  }
+
+  function rebuildMergedFromSelections() {
+    if (!lastDiffResult) return;
+    const { ops } = lastDiffResult;
+    let out = [];
+    let di = 0;
+    for (const op of ops) {
+      if (op.type === 'equal') {
+        out.push(op.a);
+      } else {
+        const choice = selections[di] || 'A';
+        if (op.type === 'delete') {
+          if (choice === 'A') out.push(op.a);
+          // else skip
+        } else if (op.type === 'insert') {
+          if (choice === 'B') out.push(op.b);
+        } else if (op.type === 'change') {
+          out.push(choice === 'A' ? op.a : op.b);
+        }
+        di++;
+      }
+    }
+    mergedText.value = out.join('\n');
+  }
+
+  function runAutoMerge() {
+    clearHighlights();
+    const aRaw = getEditorText(textA);
+    const bRaw = getEditorText(textB);
+    const aLines = aRaw.split('\n');
+    const bLines = bRaw.split('\n');
+    const ops = diffLines(aLines, bLines);
+
+    // Full union by diff order — nothing is dropped:
+    // equal → once; delete → keep A; insert → keep B; change → both A then B
+    const result = [];
+    for (const op of ops) {
+      if (op.type === 'equal') {
+        result.push(op.a);
+      } else if (op.type === 'delete') {
+        result.push(op.a);
+      } else if (op.type === 'insert') {
+        result.push(op.b);
+      } else if (op.type === 'change') {
+        result.push(op.a);
+        if (op.a !== op.b) result.push(op.b);
+      }
+    }
+
+    // Also run normal compare so user sees the diffs
+    mode = 'merge';
+    modeToggle.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === 'merge');
+    });
+    btnAutoMerge.style.display = '';
+    run();
+
+    mergedSection.style.display = '';
+    autoMergeHint.style.display = '';
+    mergedText.value = result.join('\n');
+
+    // Mark all selections consistently with auto strategy (keep A for change/delete, B for insert)
+    if (lastDiffResult) {
+      let di = 0;
+      for (const op of lastDiffResult.ops) {
+        if (op.type === 'equal') continue;
+        if (op.type === 'insert') selections[di] = 'B';
+        else selections[di] = 'A'; // delete / change — start from A; full text already in merged
+        highlightChoice(di);
+        di++;
+      }
+    }
+
+    statsBar.innerHTML += ` <span class="stat-item" style="background:#dcfce7"><strong>Авто</strong> объединение выполнено</span>`;
+  }
+
+  /** Scroll editor to line without yellow mark */
+  function scrollEditorToLine(el, lineIndex) {
+    if (lineIndex == null || lineIndex < 0) return;
+    const plain = getEditorText(el);
+    const lines = plain.split('\n');
+    if (!lines.length) return;
+    const idx = Math.min(lineIndex, lines.length - 1);
+    // Build temporary structure to get a scroll target, then strip mark class
+    const html = lines.map((line, i) => {
+      const safe = escapeHtml(line);
+      if (i === idx) return '<div><span class="scroll-target">' + (safe || '&nbsp;') + '</span></div>';
+      return '<div>' + (safe || '&nbsp;') + '</div>';
+    }).join('');
+    el.innerHTML = html;
+    const target = el.querySelector('.scroll-target');
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.remove('scroll-target');
+    }
+  }
+
+  function goDiff(dir) {
+    if (!currentDiffs.length) return;
+    if (currentDiffIndex >= 0) currentDiffs[currentDiffIndex].classList.remove('current');
+    currentDiffIndex = (currentDiffIndex + dir + currentDiffs.length) % currentDiffs.length;
+    const el = currentDiffs[currentDiffIndex];
+    el.classList.add('current');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const meta = diffMeta[currentDiffIndex];
+    if (meta) {
+      // Yellow highlight exactly on differing fragments in A and B
+      if (meta.ai != null) {
+        highlightEditorLine(textA, meta.ai);
+      } else {
+        // No fragment in A — only align scroll, no yellow
+        setEditorText(textA, getEditorText(textA));
+        if (meta.bi != null) scrollEditorToLine(textA, meta.bi);
+      }
+
+      if (meta.bi != null) {
+        highlightEditorLine(textB, meta.bi);
+      } else {
+        setEditorText(textB, getEditorText(textB));
+        if (meta.ai != null) scrollEditorToLine(textB, meta.ai);
+      }
+    }
+    updateNavUI();
+  }
+
+  function updateNavUI() {
+    if (!currentDiffs.length) {
+      diffCounter.textContent = '0 / 0';
+      btnPrevDiff.disabled = true;
+      btnNextDiff.disabled = true;
+      return;
+    }
+    diffCounter.textContent = (currentDiffIndex + 1) + ' / ' + currentDiffs.length;
+    btnPrevDiff.disabled = false;
+    btnNextDiff.disabled = false;
+  }
+
+  // Keyboard: Ctrl+Enter to run, Alt+↑/↓ for nav
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      run();
+    }
+    if (resultCard.style.display !== 'none' && currentDiffs.length) {
+      if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); goDiff(1); }
+      if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); goDiff(-1); }
+    }
+  });
+
+  updateLens();
+})();
+  </script>
+</body>
+</html>

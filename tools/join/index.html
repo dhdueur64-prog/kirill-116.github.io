@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Соединение таблиц — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --warning: #c27803;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #046c4e; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #9b1c1c; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    main { flex: 1; padding: 16px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 {
+      font-size: 1rem; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .card h2 .hint { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+    .inputs-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 900px) {
+      .inputs-grid { grid-template-columns: 1fr; }
+    }
+    .input-panel label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text);
+    }
+    .input-panel textarea {
+      width: 100%; min-height: 180px; max-height: 40vh;
+      padding: 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem; line-height: 1.45; background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      resize: vertical; outline: none;
+    }
+    .input-panel textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    .input-panel .meta {
+      margin-top: 6px; font-size: 0.8rem; color: var(--muted);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .join-config {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    }
+    @media (max-width: 700px) {
+      .join-config { grid-template-columns: 1fr; }
+    }
+    .join-type-group {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .join-type-group label {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px;
+      cursor: pointer; font-size: 0.875rem; background: #fff;
+      transition: border-color .15s, background .15s;
+    }
+    .join-type-group label:hover { border-color: var(--primary); }
+    .join-type-group input { accent-color: var(--primary); }
+    .join-type-group input:checked + span { font-weight: 600; color: var(--primary); }
+    .join-type-group label:has(input:checked) {
+      border-color: var(--primary); background: #eff6ff;
+    }
+    .keys-section { margin-top: 14px; }
+    .keys-section h3 {
+      font-size: 0.9rem; margin-bottom: 8px; color: var(--text);
+    }
+    .key-pairs { display: flex; flex-direction: column; gap: 8px; }
+    .key-pair {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid var(--border);
+    }
+    .key-pair select {
+      flex: 1; min-width: 140px; padding: 7px 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.875rem; background: #fff;
+    }
+    .key-pair .arrow { color: var(--muted); font-weight: 600; }
+    .key-pair .remove-key {
+      background: none; border: none; color: var(--danger); cursor: pointer;
+      font-size: 1.1rem; padding: 4px 8px; border-radius: 4px;
+    }
+    .key-pair .remove-key:hover { background: #fee2e2; }
+    .preview-table-wrap {
+      overflow: auto; max-height: 220px; border: 1px solid var(--border);
+      border-radius: 8px; margin-top: 8px;
+    }
+    table.data-table {
+      width: 100%; border-collapse: collapse; font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    table.data-table th, table.data-table td {
+      padding: 6px 10px; border-bottom: 1px solid var(--border);
+      border-right: 1px solid #f1f5f9; text-align: left;
+    }
+    table.data-table th {
+      background: #f1f5f9; font-weight: 600; position: sticky; top: 0; z-index: 1;
+    }
+    table.data-table tr:hover td { background: #f8fafc; }
+    table.data-table .key-col { background: #eff6ff; }
+    table.data-table th.key-col { background: #dbeafe; }
+    .result-stats {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;
+      font-size: 0.9rem;
+    }
+    .stat-item {
+      background: #f1f5f9; padding: 6px 12px; border-radius: 6px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .stat-item strong { color: var(--primary); }
+    .empty-state {
+      text-align: center; padding: 32px 16px; color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px;
+    }
+    .alert {
+      padding: 10px 14px; border-radius: 8px; font-size: 0.875rem; margin-bottom: 12px;
+    }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    footer {
+      text-align: center; padding: 12px; font-size: 0.8rem; color: var(--muted);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+    .col-prefix {
+      font-size: 0.75rem; color: var(--muted); margin-right: 4px;
+    }
+    .help-toggle {
+      background: none; border: none; color: var(--primary); cursor: pointer;
+      font-size: 0.85rem; font-weight: 500; padding: 0; text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .help-toggle:hover { color: var(--primary-hover); }
+    .join-help {
+      display: none; margin-top: 12px; padding: 14px; background: #f8fafc;
+      border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem;
+    }
+    .join-help.open { display: block; }
+    .join-help h4 {
+      font-size: 0.9rem; margin: 0 0 8px; color: var(--text);
+    }
+    .join-help p { margin: 0 0 10px; color: var(--muted); line-height: 1.55; }
+    .join-types-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;
+    }
+    @media (max-width: 700px) {
+      .join-types-grid { grid-template-columns: 1fr; }
+    }
+    .join-type-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; 
+    }
+    .join-type-card strong {
+      display: block; margin-bottom: 4px; color: var(--primary); font-size: 0.9rem;
+    }
+    .join-type-card .example {
+      margin-top: 6px; font-size: 0.8rem; color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #f1f5f9; padding: 6px 8px; border-radius: 4px;
+    }
+    .join-type-card .keep {
+      margin-top: 4px; font-size: 0.8rem;
+    }
+    .join-type-card .keep span { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🔗 Соединение таблиц</h1>
+      <div class="actions">
+        <button class="btn btn-outline btn-sm" id="btnDemo" type="button">▶ Тестовый пример</button>
+        <a href="../../index.html" class="btn btn-outline btn-sm">← К каталогу</a>
+        <button class="btn btn-outline btn-sm" id="btnClearAll">Очистить всё</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Input tables -->
+      <div class="card">
+        <h2>
+          1. Вставьте таблицы
+          <span class="hint">Скопируйте из Excel / Google Sheets / CSV (табуляция или запятая)</span>
+        </h2>
+        <div class="inputs-grid">
+          <div class="input-panel">
+            <label>
+              Таблица A (левая)
+              <button class="btn btn-ghost btn-sm" id="btnClearA" type="button">Очистить</button>
+            </label>
+            <textarea id="inputA" placeholder="Вставьте данные таблицы A сюда…&#10;Первая строка — заголовки столбцов"></textarea>
+            <div class="meta" id="metaA">Строк: 0 · Столбцов: 0</div>
+            <div class="preview-table-wrap" id="previewA" style="display:none;"></div>
+          </div>
+          <div class="input-panel">
+            <label>
+              Таблица B (правая)
+              <button class="btn btn-ghost btn-sm" id="btnClearB" type="button">Очистить</button>
+            </label>
+            <textarea id="inputB" placeholder="Вставьте данные таблицы B сюда…&#10;Первая строка — заголовки столбцов"></textarea>
+            <div class="meta" id="metaB">Строк: 0 · Столбцов: 0</div>
+            <div class="preview-table-wrap" id="previewB" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Join config -->
+      <div class="card">
+        <h2>
+          2. Настройки соединения
+          <button type="button" class="help-toggle" id="btnToggleHelp">Что это за соединения?</button>
+        </h2>
+
+        <div class="join-help" id="joinHelp">
+          <h4>Зачем соединять таблицы?</h4>
+          <p>
+            У вас есть две таблицы с общими данными (например, сотрудники и отделы, заказы и клиенты).
+            Соединение «склеивает» строки по совпадающим значениям в выбранных столбцах — без Excel, без VLOOKUP и без формул.
+          </p>
+          <p>
+            <strong>Ключ соединения</strong> — столбец (или несколько), по которому ищем совпадения.
+            Можно выбрать несколько пар столбцов: тогда строка попадёт в результат только если совпадут <em>все</em> пары.
+          </p>
+          <div class="join-types-grid">
+            <div class="join-type-card">
+              <strong>Внутреннее (Inner)</strong>
+              Только строки, у которых нашлось совпадение в <em>обеих</em> таблицах.
+              Всё, что не нашлось — отбрасывается.
+              <div class="keep"><span>Оставляет:</span> пересечение A ∩ B</div>
+              <div class="example">A: 1,2,3 · B: 2,3,4 → результат: 2,3</div>
+            </div>
+            <div class="join-type-card">
+              <strong>Левое (Left)</strong>
+              Все строки из таблицы A. Если в B нашлось совпадение — подтягиваем данные из B.
+              Если нет — ячейки из B будут пустыми.
+              <div class="keep"><span>Оставляет:</span> все из A + совпадения из B</div>
+              <div class="example">A: 1,2,3 · B: 2,3,4 → результат: 1,2,3</div>
+            </div>
+            <div class="join-type-card">
+              <strong>Правое (Right)</strong>
+              Все строки из таблицы B. Данные из A подтягиваются при совпадении,
+              иначе ячейки из A пустые.
+              <div class="keep"><span>Оставляет:</span> все из B + совпадения из A</div>
+              <div class="example">A: 1,2,3 · B: 2,3,4 → результат: 2,3,4</div>
+            </div>
+            <div class="join-type-card">
+              <strong>Полное (Full Outer)</strong>
+              Все строки из A и все строки из B. Где совпало — склеиваем,
+              где нет — оставляем с пустыми ячейками с другой стороны.
+              <div class="keep"><span>Оставляет:</span> объединение A ∪ B</div>
+              <div class="example">A: 1,2,3 · B: 2,3,4 → результат: 1,2,3,4</div>
+            </div>
+          </div>
+          <p style="margin-top: 12px; margin-bottom: 0;">
+            Нажмите <strong>«Тестовый пример»</strong> в шапке — подставятся таблицы сотрудников и отделов,
+            ключ уже выбран. Попробуйте переключить тип соединения и нажмите «Соединить».
+          </p>
+        </div>
+
+        <div style="margin-bottom: 14px; margin-top: 4px;">
+          <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px;">Тип соединения</div>
+          <div class="join-type-group">
+            <label><input type="radio" name="joinType" value="inner" checked> <span>Внутреннее (Inner)</span></label>
+            <label><input type="radio" name="joinType" value="left"> <span>Левое (Left)</span></label>
+            <label><input type="radio" name="joinType" value="right"> <span>Правое (Right)</span></label>
+            <label><input type="radio" name="joinType" value="full"> <span>Полное (Full Outer)</span></label>
+          </div>
+        </div>
+
+        <div class="keys-section">
+          <h3>Столбцы для соединения (можно несколько)</h3>
+          <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 10px;">
+            Выберите пары столбцов, по которым таблицы будут соединяться. Значения сравниваются как текст.
+          </p>
+          <div class="key-pairs" id="keyPairs"></div>
+          <button class="btn btn-ghost btn-sm" id="btnAddKey" type="button" style="margin-top: 8px;">+ Добавить пару столбцов</button>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-primary" id="btnJoin" type="button">Соединить таблицы</button>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer;">
+            <input type="checkbox" id="optPrefix" checked>
+            Добавлять префиксы A_ / B_ к одинаковым именам столбцов
+          </label>
+        </div>
+        <div id="joinError" style="display:none;" class="alert alert-error"></div>
+      </div>
+
+      <!-- Result -->
+      <div class="card" id="resultCard" style="display:none;">
+        <h2>
+          3. Результат
+          <span class="hint" id="resultHint"></span>
+        </h2>
+        <div class="result-stats" id="resultStats"></div>
+        <div class="toolbar">
+          <button class="btn btn-success btn-sm" id="btnCopy">📋 Копировать</button>
+          <button class="btn btn-ghost btn-sm" id="btnDownloadTsv">⬇ TSV</button>
+          <button class="btn btn-ghost btn-sm" id="btnDownloadCsv">⬇ CSV</button>
+        </div>
+        <div id="resultAlert" style="display:none;"></div>
+        <div class="preview-table-wrap" style="max-height: 50vh;" id="resultTableWrap"></div>
+      </div>
+    </main>
+
+    <footer>
+      WorkTools · данные не покидают ваш браузер ·
+      <a href="../../index.html">Каталог инструментов</a>
+    </footer>
+  </div>
+
+  <script>
+    // ========== State ==========
+    let tableA = null; // { headers: string[], rows: string[][] }
+    let tableB = null;
+    let resultTable = null;
+    let keyPairCount = 0;
+
+    // ========== Parsing ==========
+    function detectDelimiter(text) {
+      const firstLine = text.split(/\r?\n/).find(l => l.trim()) || '';
+      const tabs = (firstLine.match(/\t/g) || []).length;
+      const commas = (firstLine.match(/,/g) || []).length;
+      const semis = (firstLine.match(/;/g) || []).length;
+      if (tabs >= commas && tabs >= semis && tabs > 0) return '\t';
+      if (semis > commas && semis > 0) return ';';
+      return ',';
+    }
+
+    function parseTable(text) {
+      if (!text || !text.trim()) return null;
+      const delim = detectDelimiter(text);
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+        .filter(l => l.trim() !== '');
+      if (lines.length === 0) return null;
+
+      const parseRow = (line) => {
+        // Simple CSV/TSV parser that handles quoted fields
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (inQuotes) {
+            if (ch === '"') {
+              if (line[i + 1] === '"') { current += '"'; i++; }
+              else inQuotes = false;
+            } else current += ch;
+          } else {
+            if (ch === '"') inQuotes = true;
+            else if (ch === delim) { result.push(current); current = ''; }
+            else current += ch;
+          }
+        }
+        result.push(current);
+        return result.map(c => c.trim());
+      };
+
+      const headers = parseRow(lines[0]);
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cells = parseRow(lines[i]);
+        // Pad or trim to header length
+        while (cells.length < headers.length) cells.push('');
+        if (cells.length > headers.length) cells.length = headers.length;
+        rows.push(cells);
+      }
+      return { headers, rows, delim };
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderPreview(table, containerId, maxRows = 8) {
+      const el = document.getElementById(containerId);
+      if (!table || !table.headers.length) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      const showRows = table.rows.slice(0, maxRows);
+      let html = '<table class="data-table"><thead><tr>';
+      table.headers.forEach(h => { html += `<th>${escapeHtml(h || '(пусто)')}</th>`; });
+      html += '</tr></thead><tbody>';
+      showRows.forEach(row => {
+        html += '<tr>';
+        row.forEach(c => { html += `<td>${escapeHtml(c)}</td>`; });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      if (table.rows.length > maxRows) {
+        html += `<div style="padding:6px 10px;font-size:0.75rem;color:var(--muted);">… и ещё ${table.rows.length - maxRows} строк</div>`;
+      }
+      el.innerHTML = html;
+      el.style.display = 'block';
+    }
+
+    function updateMeta(table, metaId) {
+      const el = document.getElementById(metaId);
+      if (!table) {
+        el.textContent = 'Строк: 0 · Столбцов: 0';
+        return;
+      }
+      el.textContent = `Строк: ${table.rows.length} · Столбцов: ${table.headers.length}`;
+    }
+
+    // ========== Key pairs UI ==========
+    function getSelectOptions(table, selected) {
+      if (!table) return '<option value="">— нет данных —</option>';
+      return table.headers.map((h, i) =>
+        `<option value="${i}" ${String(i) === String(selected) ? 'selected' : ''}>${escapeHtml(h || `Столбец ${i + 1}`)}</option>`
+      ).join('');
+    }
+
+    function addKeyPair(idxA = '', idxB = '') {
+      keyPairCount++;
+      const id = keyPairCount;
+      const div = document.createElement('div');
+      div.className = 'key-pair';
+      div.dataset.id = id;
+      div.innerHTML = `
+        <select class="key-a" data-id="${id}">${getSelectOptions(tableA, idxA)}</select>
+        <span class="arrow">⟷</span>
+        <select class="key-b" data-id="${id}">${getSelectOptions(tableB, idxB)}</select>
+        <button type="button" class="remove-key" title="Удалить">×</button>
+      `;
+      div.querySelector('.remove-key').addEventListener('click', () => {
+        div.remove();
+        if (document.querySelectorAll('.key-pair').length === 0) addKeyPair();
+      });
+      document.getElementById('keyPairs').appendChild(div);
+    }
+
+    function refreshKeySelects() {
+      document.querySelectorAll('.key-pair').forEach(pair => {
+        const selA = pair.querySelector('.key-a');
+        const selB = pair.querySelector('.key-b');
+        const valA = selA.value;
+        const valB = selB.value;
+        selA.innerHTML = getSelectOptions(tableA, valA);
+        selB.innerHTML = getSelectOptions(tableB, valB);
+      });
+    }
+
+    function getKeyPairs() {
+      const pairs = [];
+      document.querySelectorAll('.key-pair').forEach(pair => {
+        const a = pair.querySelector('.key-a').value;
+        const b = pair.querySelector('.key-b').value;
+        if (a !== '' && b !== '') {
+          pairs.push({ a: parseInt(a, 10), b: parseInt(b, 10) });
+        }
+      });
+      return pairs;
+    }
+
+    // ========== Join logic ==========
+    function makeKey(row, indices) {
+      return indices.map(i => String(row[i] ?? '').trim()).join('\0');
+    }
+
+    function performJoin(type, pairs, prefix) {
+      if (!tableA || !tableB) throw new Error('Обе таблицы должны быть заполнены');
+      if (pairs.length === 0) throw new Error('Выберите хотя бы одну пару столбцов для соединения');
+
+      const indicesA = pairs.map(p => p.a);
+      const indicesB = pairs.map(p => p.b);
+
+      // Build index for B
+      const mapB = new Map();
+      tableB.rows.forEach((row, idx) => {
+        const k = makeKey(row, indicesB);
+        if (!mapB.has(k)) mapB.set(k, []);
+        mapB.get(k).push(idx);
+      });
+
+      // Determine result headers
+      const headersA = tableA.headers.slice();
+      const headersB = tableB.headers.slice();
+      const usedNames = new Set();
+      const finalHeaders = [];
+      const colSources = []; // { side: 'A'|'B', idx: number }
+
+      headersA.forEach((h, i) => {
+        let name = h || `A_col${i + 1}`;
+        if (prefix || usedNames.has(name)) {
+          const needsPrefix = prefix || usedNames.has(name);
+          if (needsPrefix) name = 'A_' + (h || `col${i + 1}`);
+        }
+        // Avoid duplicate after prefix
+        let unique = name;
+        let n = 2;
+        while (usedNames.has(unique)) {
+          unique = name + '_' + n++;
+        }
+        usedNames.add(unique);
+        finalHeaders.push(unique);
+        colSources.push({ side: 'A', idx: i });
+      });
+
+      headersB.forEach((h, i) => {
+        // Skip key columns from B if they match A keys? No — keep all, user may want them.
+        // But commonly people drop duplicate keys. We'll keep everything and let prefix handle names.
+        let name = h || `B_col${i + 1}`;
+        if (prefix || usedNames.has(name)) {
+          name = 'B_' + (h || `col${i + 1}`);
+        }
+        let unique = name;
+        let n = 2;
+        while (usedNames.has(unique)) {
+          unique = name + '_' + n++;
+        }
+        usedNames.add(unique);
+        finalHeaders.push(unique);
+        colSources.push({ side: 'B', idx: i });
+      });
+
+      const resultRows = [];
+      const matchedB = new Set();
+
+      // Left / Inner / Full — iterate A
+      if (type === 'inner' || type === 'left' || type === 'full') {
+        tableA.rows.forEach(rowA => {
+          const k = makeKey(rowA, indicesA);
+          const matches = mapB.get(k);
+          if (matches && matches.length) {
+            matches.forEach(bi => {
+              matchedB.add(bi);
+              const rowB = tableB.rows[bi];
+              const out = colSources.map(src =>
+                src.side === 'A' ? (rowA[src.idx] ?? '') : (rowB[src.idx] ?? '')
+              );
+              resultRows.push(out);
+            });
+          } else if (type === 'left' || type === 'full') {
+            const out = colSources.map(src =>
+              src.side === 'A' ? (rowA[src.idx] ?? '') : ''
+            );
+            resultRows.push(out);
+          }
+        });
+      }
+
+      // Right / Full — unmatched B
+      if (type === 'right' || type === 'full') {
+        tableB.rows.forEach((rowB, bi) => {
+          if (matchedB.has(bi)) return;
+          // For pure right we still need to check if it would match any A,
+          // but since we already collected matched from A side, unmatched are correct.
+          // For right-only we didn't iterate A, so matchedB is empty — need to build mapA.
+          if (type === 'right') {
+            // rebuild properly
+          }
+          const out = colSources.map(src =>
+            src.side === 'B' ? (rowB[src.idx] ?? '') : ''
+          );
+          resultRows.push(out);
+        });
+      }
+
+      // Fix pure Right join (we didn't populate matchedB correctly for right-only)
+      if (type === 'right') {
+        resultRows.length = 0;
+        const mapA = new Map();
+        tableA.rows.forEach((row, idx) => {
+          const k = makeKey(row, indicesA);
+          if (!mapA.has(k)) mapA.set(k, []);
+          mapA.get(k).push(idx);
+        });
+        tableB.rows.forEach(rowB => {
+          const k = makeKey(rowB, indicesB);
+          const matches = mapA.get(k);
+          if (matches && matches.length) {
+            matches.forEach(ai => {
+              const rowA = tableA.rows[ai];
+              const out = colSources.map(src =>
+                src.side === 'A' ? (rowA[src.idx] ?? '') : (rowB[src.idx] ?? '')
+              );
+              resultRows.push(out);
+            });
+          } else {
+            const out = colSources.map(src =>
+              src.side === 'B' ? (rowB[src.idx] ?? '') : ''
+            );
+            resultRows.push(out);
+          }
+        });
+      }
+
+      return { headers: finalHeaders, rows: resultRows };
+    }
+
+    // ========== Render result ==========
+    function renderResult(table) {
+      const wrap = document.getElementById('resultTableWrap');
+      if (!table || !table.rows.length) {
+        wrap.innerHTML = '<div class="empty-state">Нет строк в результате</div>';
+        return;
+      }
+      let html = '<table class="data-table"><thead><tr>';
+      table.headers.forEach(h => { html += `<th>${escapeHtml(h)}</th>`; });
+      html += '</tr></thead><tbody>';
+      // Limit display for performance
+      const maxShow = 500;
+      const show = table.rows.slice(0, maxShow);
+      show.forEach(row => {
+        html += '<tr>';
+        row.forEach(c => { html += `<td>${escapeHtml(c)}</td>`; });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      if (table.rows.length > maxShow) {
+        html += `<div style="padding:8px 10px;font-size:0.8rem;color:var(--muted);">Показаны первые ${maxShow} из ${table.rows.length} строк. Полный результат доступен при копировании / скачивании.</div>`;
+      }
+      wrap.innerHTML = html;
+    }
+
+    function tableToTsv(table) {
+      const esc = (v) => {
+        const s = String(v ?? '');
+        if (/[\t\n\r"]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+      const lines = [table.headers.map(esc).join('\t')];
+      table.rows.forEach(r => lines.push(r.map(esc).join('\t')));
+      return lines.join('\n');
+    }
+
+    function tableToCsv(table) {
+      const esc = (v) => {
+        const s = String(v ?? '');
+        if (/[,\n\r"]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      };
+      const lines = [table.headers.map(esc).join(',')];
+      table.rows.forEach(r => lines.push(r.map(esc).join(',')));
+      return lines.join('\n');
+    }
+
+    function download(filename, content, mime) {
+      const blob = new Blob(['\ufeff' + content], { type: mime + ';charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ========== Event handlers ==========
+    function onInputA() {
+      tableA = parseTable(document.getElementById('inputA').value);
+      updateMeta(tableA, 'metaA');
+      renderPreview(tableA, 'previewA');
+      refreshKeySelects();
+    }
+
+    function onInputB() {
+      tableB = parseTable(document.getElementById('inputB').value);
+      updateMeta(tableB, 'metaB');
+      renderPreview(tableB, 'previewB');
+      refreshKeySelects();
+    }
+
+    document.getElementById('inputA').addEventListener('input', onInputA);
+    document.getElementById('inputB').addEventListener('input', onInputB);
+    document.getElementById('inputA').addEventListener('paste', () => setTimeout(onInputA, 0));
+    document.getElementById('inputB').addEventListener('paste', () => setTimeout(onInputB, 0));
+
+    document.getElementById('btnClearA').addEventListener('click', () => {
+      document.getElementById('inputA').value = '';
+      onInputA();
+    });
+    document.getElementById('btnClearB').addEventListener('click', () => {
+      document.getElementById('inputB').value = '';
+      onInputB();
+    });
+    document.getElementById('btnClearAll').addEventListener('click', () => {
+      document.getElementById('inputA').value = '';
+      document.getElementById('inputB').value = '';
+      onInputA();
+      onInputB();
+      document.getElementById('resultCard').style.display = 'none';
+      resultTable = null;
+      document.getElementById('keyPairs').innerHTML = '';
+      keyPairCount = 0;
+      addKeyPair();
+    });
+
+    document.getElementById('btnAddKey').addEventListener('click', () => addKeyPair());
+
+    document.getElementById('btnToggleHelp').addEventListener('click', () => {
+      const help = document.getElementById('joinHelp');
+      const btn = document.getElementById('btnToggleHelp');
+      const open = help.classList.toggle('open');
+      btn.textContent = open ? 'Скрыть объяснение' : 'Что это за соединения?';
+    });
+
+    document.getElementById('btnDemo').addEventListener('click', () => {
+      // Таблица A — сотрудники (есть отделы 10, 20, 30 и сотрудник без отдела)
+      const sampleA = [
+        'id\tфио\tотдел_id\tдолжность',
+        '1\tИванов И.И.\t10\tМенеджер',
+        '2\tПетрова А.С.\t20\tБухгалтер',
+        '3\tСидоров К.В.\t10\tАналитик',
+        '4\tКозлова М.Н.\t30\tЮрист',
+        '5\tНовиков Д.А.\t\tСтажёр'
+      ].join('\n');
+
+      // Таблица B — справочник отделов (есть 10, 20, 40 — отдел без сотрудников)
+      const sampleB = [
+        'отдел_id\tназвание\tгород',
+        '10\tПродажи\tМосква',
+        '20\tФинансы\tСанкт-Петербург',
+        '40\tМаркетинг\tКазань'
+      ].join('\n');
+
+      document.getElementById('inputA').value = sampleA;
+      document.getElementById('inputB').value = sampleB;
+      onInputA();
+      onInputB();
+
+      // Ключ: отдел_id ↔ отдел_id
+      document.getElementById('keyPairs').innerHTML = '';
+      keyPairCount = 0;
+      // индексы: A.отдел_id = 2, B.отдел_id = 0
+      addKeyPair(2, 0);
+
+      // По умолчанию Left — видно и сотрудников без отдела, и (при Full) отделы без людей
+      document.querySelector('input[name="joinType"][value="left"]').checked = true;
+
+      // Открыть подсказку, чтобы сразу было понятно
+      const help = document.getElementById('joinHelp');
+      if (!help.classList.contains('open')) {
+        help.classList.add('open');
+        document.getElementById('btnToggleHelp').textContent = 'Скрыть объяснение';
+      }
+
+      document.getElementById('resultCard').style.display = 'none';
+      resultTable = null;
+
+      // Автоматически соединить
+      document.getElementById('btnJoin').click();
+    });
+
+    document.getElementById('btnJoin').addEventListener('click', () => {
+      const errEl = document.getElementById('joinError');
+      errEl.style.display = 'none';
+      try {
+        const type = document.querySelector('input[name="joinType"]:checked').value;
+        const pairs = getKeyPairs();
+        const prefix = document.getElementById('optPrefix').checked;
+        resultTable = performJoin(type, pairs, prefix);
+
+        document.getElementById('resultCard').style.display = 'block';
+        const typeNames = { inner: 'Внутреннее', left: 'Левое', right: 'Правое', full: 'Полное' };
+        document.getElementById('resultHint').textContent =
+          `${typeNames[type]} · ${pairs.length} ключ(ей)`;
+
+        document.getElementById('resultStats').innerHTML = `
+          <div class="stat-item">Строк: <strong>${resultTable.rows.length}</strong></div>
+          <div class="stat-item">Столбцов: <strong>${resultTable.headers.length}</strong></div>
+          <div class="stat-item">Таблица A: <strong>${tableA.rows.length}</strong> → B: <strong>${tableB.rows.length}</strong></div>
+        `;
+        renderResult(resultTable);
+        document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (e) {
+        errEl.textContent = e.message || String(e);
+        errEl.style.display = 'block';
+      }
+    });
+
+    document.getElementById('btnCopy').addEventListener('click', async () => {
+      if (!resultTable) return;
+      const tsv = tableToTsv(resultTable);
+      try {
+        await navigator.clipboard.writeText(tsv);
+        const alert = document.getElementById('resultAlert');
+        alert.className = 'alert alert-success';
+        alert.textContent = 'Скопировано в буфер обмена (TSV — можно вставить в Excel)';
+        alert.style.display = 'block';
+        setTimeout(() => { alert.style.display = 'none'; }, 2500);
+      } catch {
+        alert('Не удалось скопировать. Попробуйте скачать файл.');
+      }
+    });
+
+    document.getElementById('btnDownloadTsv').addEventListener('click', () => {
+      if (!resultTable) return;
+      download('join_result.tsv', tableToTsv(resultTable), 'text/tab-separated-values');
+    });
+    document.getElementById('btnDownloadCsv').addEventListener('click', () => {
+      if (!resultTable) return;
+      download('join_result.csv', tableToCsv(resultTable), 'text/csv');
+    });
+
+    // Init
+    addKeyPair();
+  </script>
+</body>
+</html>

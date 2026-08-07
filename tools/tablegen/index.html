@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор тестовых таблиц — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --warning: #c27803;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border: none; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #046c4e; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover:not(:disabled) { background: #9b1c1c; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    main { flex: 1; padding: 16px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 {
+      font-size: 1rem; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .card h2 .hint { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+    label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 0.875rem; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; resize: vertical; min-height: 80px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+    .field { flex: 1; min-width: 140px; }
+    .field-sm { flex: 0 0 110px; min-width: 90px; }
+    .field-xs { flex: 0 0 80px; min-width: 70px; }
+    .cols-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .cols-table th, .cols-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+    .cols-table th { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .cols-table input, .cols-table select { padding: 6px 8px; font-size: 0.82rem; }
+    .num-opts { display: none; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+    .num-opts.visible { display: flex; }
+    .num-opts label { font-weight: 400; display: flex; align-items: center; gap: 4px; }
+    .dict-opts { font-size: 0.8rem; color: var(--muted); }
+    .dict-opts label { font-weight: 400; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .dict-opts select { width: auto; min-width: 160px; max-width: 100%; }
+    .dict-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;
+    }
+    .dict-item {
+      border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+      display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .dict-item:hover { background: #f8fafc; }
+    .dict-item.selected { border-color: var(--primary); background: rgba(26,86,219,.06); }
+    .dict-item input { margin-top: 3px; flex-shrink: 0; }
+    .dict-item .meta { font-size: 0.75rem; color: var(--muted); }
+    .dict-item .badge {
+      display: inline-block; font-size: 0.7rem; padding: 1px 6px; border-radius: 4px;
+      background: #fef3c7; color: #92400e; margin-left: 4px;
+    }
+    .dict-item .badge-personal { background: #fce7f3; color: #9d174d; }
+    .custom-dict-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .result-table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--border); border-radius: 8px; }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .result-table th, .result-table td { padding: 6px 10px; border: 1px solid var(--border); white-space: nowrap; }
+    .result-table th { background: #f1f5f9; position: sticky; top: 0; z-index: 1; font-weight: 600; }
+    .result-table tr:nth-child(even) { background: #f8fafc; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 8px;
+      font-size: 0.875rem; opacity: 0; transition: all .25s; z-index: 100; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .empty-hint { color: var(--muted); font-size: 0.875rem; padding: 20px; text-align: center; }
+    .chk { display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer; }
+    .chk input { width: auto; }
+    .col-actions { display: flex; gap: 2px; align-items: center; }
+    .col-actions .btn { padding: 3px 7px; font-size: 0.75rem; line-height: 1.2; }
+    .dict-item { position: relative; }
+    .dict-item .dict-actions {
+      display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap;
+    }
+    .dict-item .dict-actions .btn { padding: 2px 8px; font-size: 0.72rem; }
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(15,23,42,.45);
+      z-index: 200; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.2);
+      width: 100%; max-width: 520px; max-height: 85vh; display: flex; flex-direction: column;
+    }
+    .modal__header {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .modal__header h3 { font-size: 1rem; font-weight: 600; }
+    .modal__body { padding: 14px 16px; overflow: auto; flex: 1; }
+    .modal__footer {
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+    }
+    .word-list { list-style: none; margin: 0; padding: 0; }
+    .word-list li {
+      display: flex; gap: 6px; align-items: center; margin-bottom: 6px;
+    }
+    .word-list li input { flex: 1; padding: 6px 8px; font-size: 0.85rem; }
+    .word-list li .btn { flex-shrink: 0; padding: 4px 8px; font-size: 0.75rem; }
+    .add-word-row { display: flex; gap: 6px; margin-top: 10px; }
+    .add-word-row input { flex: 1; }
+    .modal-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>📊 Генератор тестовых таблиц</h1>
+    <div class="actions">
+      <a href="../../index.html" class="btn btn-outline btn-sm">← К каталогу</a>
+      <button class="btn btn-outline btn-sm" id="btnReset">Сбросить</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Columns -->
+    <div class="card">
+      <h2>
+        Колонки
+        <span class="hint">название + тип данных</span>
+      </h2>
+      <table class="cols-table" id="colsTable">
+        <thead>
+          <tr>
+            <th style="width:4%"></th>
+            <th style="width:26%">Название</th>
+            <th style="width:20%">Тип</th>
+            <th style="width:36%">Параметры</th>
+            <th style="width:14%"></th>
+          </tr>
+        </thead>
+        <tbody id="colsBody"></tbody>
+      </table>
+      <div style="margin-top:10px">
+        <button class="btn btn-ghost btn-sm" id="btnAddCol">+ Добавить колонку</button>
+      </div>
+    </div>
+
+    <!-- Rows & Dictionaries -->
+    <div class="card">
+      <h2>
+        Параметры генерации
+        <span class="hint">количество строк и словари</span>
+      </h2>
+      <div class="row" style="margin-bottom:16px">
+        <div class="field-sm">
+          <label for="rowCount">Строк</label>
+          <input type="number" id="rowCount" value="20" min="1" max="5000" step="1">
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn btn-primary" id="btnGenerate">Сгенерировать таблицу</button>
+        </div>
+      </div>
+
+      <label style="margin-bottom:8px;display:block">Словари для текстовых колонок</label>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">
+        Если ничего не выбрано — используются все словари <strong>без</strong> отметки «личный».
+      </p>
+      <div class="dict-grid" id="dictGrid"></div>
+
+      <div class="custom-dict-form">
+        <label style="margin-bottom:6px;display:block">Свой словарь</label>
+        <div class="row">
+          <div class="field" style="flex:0 0 180px">
+            <input type="text" id="customDictName" placeholder="Название словаря">
+          </div>
+          <div class="field">
+            <textarea id="customDictWords" rows="2" placeholder="Слова через запятую, точку с запятой или с новой строки"></textarea>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btnAddCustomDict" style="margin-top:8px">Добавить словарь</button>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="card" id="resultCard" style="display:none">
+      <h2>
+        Результат
+        <span class="hint" id="resultMeta"></span>
+      </h2>
+      <div class="toolbar">
+        <button class="btn btn-success btn-sm" id="btnCopyTsv">Копировать TSV</button>
+        <button class="btn btn-ghost btn-sm" id="btnCopyCsv">Копировать CSV</button>
+        <button class="btn btn-ghost btn-sm" id="btnDownloadCsv">Скачать CSV</button>
+      </div>
+      <div class="result-table-wrap">
+        <table class="result-table" id="resultTable"></table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Dictionary editor modal -->
+<div class="modal-overlay" id="dictModal">
+  <div class="modal">
+    <div class="modal__header">
+      <h3 id="dictModalTitle">Словарь</h3>
+      <button class="btn btn-ghost btn-sm" id="dictModalClose" type="button">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="modal-meta" id="dictModalMeta"></div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="field">
+          <label for="dictModalName">Название</label>
+          <input type="text" id="dictModalName">
+        </div>
+      </div>
+      <label style="margin-bottom:6px;display:block">Слова</label>
+      <ul class="word-list" id="dictWordList"></ul>
+      <div class="add-word-row">
+        <input type="text" id="dictNewWord" placeholder="Новое слово">
+        <button class="btn btn-ghost btn-sm" id="btnAddWord" type="button">+ Добавить</button>
+      </div>
+      <div style="margin-top:12px">
+        <label style="margin-bottom:4px;display:block;font-weight:400;color:var(--muted);font-size:0.8rem">Или вставить списком (через запятую / ; / новую строку)</label>
+        <textarea id="dictBulkAdd" rows="2" placeholder="слово1, слово2, слово3"></textarea>
+        <button class="btn btn-ghost btn-sm" id="btnBulkAdd" type="button" style="margin-top:6px">Добавить из списка</button>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn-danger btn-sm" id="btnDeleteDict" type="button" style="margin-right:auto;display:none">Удалить словарь</button>
+      <button class="btn btn-ghost btn-sm" id="dictModalCancel" type="button">Отмена</button>
+      <button class="btn btn-primary btn-sm" id="dictModalSave" type="button">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========== Built-in dictionaries ========== */
+const BUILTIN_DICTS = {
+  counterparties: {
+    name: "Контрагенты",
+    personal: false,
+    words: [
+      "ООО «Альфа Трейд»","ООО «Бета Логистик»","ИП Смирнов А.В.","АО «Гамма Строй»",
+      "ООО «Дельта Тех»","ООО «Эпсилон Софт»","ИП Козлова М.И.","ООО «Зета Плюс»",
+      "АО «Эта Групп»","ООО «Тета Маркет»","ООО «Йота Сервис»","ИП Морозов Д.С.",
+      "ООО «Каппа Трейд»","ООО «Лямбда Логистика»","АО «Мю Инвест»","ООО «Ню Технологии»",
+      "ИП Васильева Е.П.","ООО «Кси Про»","ООО «Омикрон»","АО «Пи Снаб»",
+      "ООО «Ро Трейд»","ООО «Сигма Строй»","ИП Новиков И.К.","ООО «Тау Групп»",
+      "ООО «Ипсилон»","АО «Фи Менеджмент»","ООО «Хи Сервис»","ООО «Пси Логистик»",
+      "ИП Федорова О.Л.","ООО «Омега Плюс»","ООО «СеверТорг»","ООО «ЮгСнаб»",
+      "АО «ВостокИнвест»","ООО «ЗападТрейд»","ИП Лебедев П.Р.","ООО «ЦентрМаркет»",
+      "ООО «ПрофСнаб»","ООО «ТехноПарк»","АО «МегаСтрой»","ООО «Альянс Групп»",
+      "ИП Соколова Н.А.","ООО «Вектор Плюс»","ООО «Горизонт»","ООО «Импульс Трейд»",
+      "АО «Каскад»","ООО «ЛидерСнаб»","ООО «МастерГрупп»","ИП Орлов В.М.",
+      "ООО «Партнёр»","ООО «Ресурс»","ООО «Стандарт»","АО «Триумф»",
+      "ООО «Успех»","ООО «Фактор»","ИП Юдина Т.С.","ООО «Эксперт»"
+    ]
+  },
+  products: {
+    name: "Товары",
+    personal: false,
+    words: [
+      "Молоко 3.2% 1л","Хлеб белый нарезной","Яйца С1 10шт","Сахар-песок 1кг",
+      "Мука пшеничная 2кг","Масло подсолнечное 1л","Рис длиннозерный 900г","Гречка 800г",
+      "Макароны спагетти 500г","Чай чёрный 100пак","Кофе растворимый 95г","Сок яблочный 1л",
+      "Вода негазированная 1.5л","Йогурт натуральный 125г","Сыр Российский 300г","Колбаса варёная",
+      "Курица охлаждённая","Говядина вырезка","Свинина карбонад","Рыба минтай филе",
+      "Картофель 5кг","Морковь 1кг","Лук репчатый 1кг","Капуста белокочанная",
+      "Яблоки Голден 1кг","Бананы 1кг","Апельсины 1кг","Помидоры 1кг",
+      "Огурцы 1кг","Перец болгарский","Шоколад молочный 90г","Печенье Юбилейное",
+      "Вафли Артек","Конфеты Ассорти 300г","Чипсы картофельные 150г","Сухарики 100г",
+      "Кетчуп томатный 500г","Майонез Провансаль 400г","Горчица 200г","Соль поваренная 1кг",
+      "Перец чёрный молотый","Лавровый лист","Стиральный порошок 3кг","Мыло хозяйственное",
+      "Шампунь 400мл","Зубная паста 100г","Туалетная бумага 8рул","Салфетки бумажные",
+      "Пакеты для мусора 30л","Батарейки АА 4шт","Лампочка LED 10Вт","Клей ПВА 100г",
+      "Скотч упаковочный","Ручка шариковая синяя","Тетрадь 48л клетка","Блокнот А5"
+    ]
+  },
+  nomenclature: {
+    name: "Номенклатура",
+    personal: false,
+    words: [
+      "Арт-001234","SKU-98765","NOM-112233","CODE-445566","ITEM-778899",
+      "PROD-00102","ART-334455","SKU-667788","NOM-990011","CODE-223344",
+      "ITEM-556677","PROD-889900","ART-123456","SKU-654321","NOM-789012",
+      "CODE-345678","ITEM-901234","PROD-567890","ART-234567","SKU-890123",
+      "NOM-456789","CODE-012345","ITEM-678901","PROD-345678","ART-901234",
+      "SKU-567890","NOM-123789","CODE-456012","ITEM-789345","PROD-012678",
+      "ART-345901","SKU-678234","NOM-901567","CODE-234890","ITEM-567123",
+      "PROD-890456","ART-123789","SKU-456012","NOM-789345","CODE-012678",
+      "ITEM-345901","PROD-678234","ART-901567","SKU-234890","NOM-567123",
+      "CODE-890456","ITEM-123012","PROD-456345","ART-789678","SKU-012901",
+      "NOM-345234","CODE-678567","ITEM-901890","PROD-234123","ART-567456"
+    ]
+  },
+  colors: {
+    name: "Цвета",
+    personal: false,
+    words: [
+      "Красный","Синий","Зелёный","Жёлтый","Оранжевый","Фиолетовый","Розовый",
+      "Голубой","Бирюзовый","Коричневый","Серый","Чёрный","Белый","Бежевый",
+      "Бордовый","Малиновый","Алый","Лазурный","Изумрудный","Оливковый",
+      "Салатовый","Лимонный","Золотистый","Серебристый","Персиковый","Коралловый",
+      "Индиго","Фиалковый","Сиреневый","Лиловый","Пурпурный","Фуксия",
+      "Тёмно-синий","Тёмно-зелёный","Тёмно-красный","Светло-серый","Тёмно-серый",
+      "Хаки","Горчичный","Терракотовый","Кирпичный","Мятный","Бирюза",
+      "Небесно-голубой","Васильковый","Ультрамарин","Аквамарин","Циан",
+      "Магента","Пурпур","Шоколадный","Кофейный","Кремовый","Слоновая кость",
+      "Жемчужный","Платиновый","Бронзовый","Медный","Антрацит","Графит"
+    ]
+  },
+  animals: {
+    name: "Животные",
+    personal: false,
+    words: [
+      "Собака","Кошка","Лошадь","Корова","Овца","Коза","Свинья","Курица",
+      "Утка","Гусь","Индейка","Кролик","Хомяк","Морская свинка","Попугай",
+      "Канарейка","Рыбка","Черепаха","Ящерица","Змея","Лягушка","Ёж",
+      "Белка","Лиса","Волк","Медведь","Лось","Олень","Кабан","Заяц",
+      "Барсук","Выдра","Бобр","Норка","Соболь","Куница","Рысь","Тигр",
+      "Лев","Пантера","Леопард","Гепард","Слон","Жираф","Зебра","Бегемот",
+      "Носорог","Крокодил","Обезьяна","Горилла","Шимпанзе","Орангутан",
+      "Пингвин","Дельфин","Кит","Акула","Осьминог","Краб","Морской конёк",
+      "Бабочка","Пчела","Муравей","Божья коровка","Стрекоза","Кузнечик"
+    ]
+  }
+};
+
+/* ========== State ========== */
+let columns = [];
+let customDicts = {}; // id -> {name, personal:false, words:[]}
+let selectedDictIds = new Set(); // initially empty → use all non-personal
+let lastTable = null; // {headers, rows}
+
+const COL_TYPES = [
+  { id: 'dict', label: 'Из словаря' },
+  { id: 'number', label: 'Число' },
+  { id: 'date', label: 'Дата' },
+  { id: 'bool', label: 'Булево' },
+  { id: 'uuid', label: 'UUID' },
+  { id: 'seq', label: 'Порядковый №' },
+  { id: 'text', label: 'Случайный текст' }
+];
+
+/* ========== Helpers ========== */
+function uid() { return 'c' + Math.random().toString(36).slice(2, 9); }
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function allDicts() {
+  const map = {};
+  for (const [id, d] of Object.entries(BUILTIN_DICTS)) map[id] = d;
+  for (const [id, d] of Object.entries(customDicts)) map[id] = d;
+  return map;
+}
+
+function getActiveWords() {
+  const dicts = allDicts();
+  let ids = [...selectedDictIds];
+  if (ids.length === 0) {
+    ids = Object.keys(dicts).filter(id => !dicts[id].personal);
+  }
+  const words = [];
+  for (const id of ids) {
+    if (dicts[id]) words.push(...dicts[id].words);
+  }
+  return words.length ? words : ['—'];
+}
+
+/* ========== Columns UI ========== */
+function addColumn(prefill) {
+  const col = prefill || {
+    id: uid(),
+    name: '',
+    type: 'dict',
+    dictId: '',          // '' = из выбранных / всех неличных; иначе id словаря
+    numFormat: 'int',    // int | 1 | 2
+    allowNegative: true
+  };
+  if (col.dictId === undefined) col.dictId = '';
+  columns.push(col);
+  renderColumns();
+}
+
+function removeColumn(id) {
+  columns = columns.filter(c => c.id !== id);
+  renderColumns();
+}
+
+function moveColumn(id, dir) {
+  const idx = columns.findIndex(c => c.id === id);
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= columns.length) return;
+  const tmp = columns[idx];
+  columns[idx] = columns[newIdx];
+  columns[newIdx] = tmp;
+  renderColumns();
+}
+
+function renderColumns() {
+  const tbody = document.getElementById('colsBody');
+  tbody.innerHTML = '';
+  const dicts = allDicts();
+  columns.forEach((col, idx) => {
+    const tr = document.createElement('tr');
+    const typeOpts = COL_TYPES.map(t =>
+      `<option value="${t.id}" ${col.type === t.id ? 'selected' : ''}>${t.label}</option>`
+    ).join('');
+    const isNum = col.type === 'number';
+    const isDict = col.type === 'dict';
+
+    let dictSelectHtml = '';
+    if (isDict) {
+      const dictOpts = [
+        `<option value="" ${!col.dictId ? 'selected' : ''}>Из выбранных словарей</option>`
+      ];
+      for (const [id, d] of Object.entries(dicts)) {
+        dictOpts.push(
+          `<option value="${escapeAttr(id)}" ${col.dictId === id ? 'selected' : ''}>${escapeAttr(d.name)}${d.personal ? ' (личный)' : ''}</option>`
+        );
+      }
+      dictSelectHtml = `
+        <div class="dict-opts">
+          <label>Словарь:
+            <select data-id="${col.id}" data-field="dictId">${dictOpts.join('')}</select>
+          </label>
+        </div>
+      `;
+    }
+
+    tr.innerHTML = `
+      <td>
+        <div class="col-actions">
+          <button class="btn btn-ghost" data-move-up="${col.id}" title="Выше" ${idx === 0 ? 'disabled' : ''}>↑</button>
+          <button class="btn btn-ghost" data-move-down="${col.id}" title="Ниже" ${idx === columns.length - 1 ? 'disabled' : ''}>↓</button>
+        </div>
+      </td>
+      <td><input type="text" data-id="${col.id}" data-field="name" value="${escapeAttr(col.name)}" placeholder="Колонка ${idx+1}"></td>
+      <td>
+        <select data-id="${col.id}" data-field="type">${typeOpts}</select>
+      </td>
+      <td>
+        <div class="num-opts ${isNum ? 'visible' : ''}" data-numopts="${col.id}">
+          <label>Формат:
+            <select data-id="${col.id}" data-field="numFormat">
+              <option value="int" ${col.numFormat==='int'?'selected':''}>Целое</option>
+              <option value="1" ${col.numFormat==='1'?'selected':''}>1 знак</option>
+              <option value="2" ${col.numFormat==='2'?'selected':''}>2 знака</option>
+            </select>
+          </label>
+          <label class="chk">
+            <input type="checkbox" data-id="${col.id}" data-field="allowNegative" ${col.allowNegative ? 'checked' : ''}>
+            Отрицательные
+          </label>
+          <span style="font-size:0.75rem">−1000…1000</span>
+        </div>
+        ${dictSelectHtml}
+        ${!isNum && !isDict ? '<span style="color:var(--muted);font-size:0.8rem">—</span>' : ''}
+      </td>
+      <td>
+        <button class="btn btn-ghost btn-sm" data-remove="${col.id}" title="Удалить">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // events
+  tbody.querySelectorAll('input[data-field], select[data-field]').forEach(el => {
+    el.addEventListener('change', onColChange);
+    el.addEventListener('input', onColChange);
+  });
+  tbody.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => removeColumn(btn.dataset.remove));
+  });
+  tbody.querySelectorAll('[data-move-up]').forEach(btn => {
+    btn.addEventListener('click', () => moveColumn(btn.dataset.moveUp, -1));
+  });
+  tbody.querySelectorAll('[data-move-down]').forEach(btn => {
+    btn.addEventListener('click', () => moveColumn(btn.dataset.moveDown, 1));
+  });
+}
+
+function onColChange(e) {
+  const id = e.target.dataset.id;
+  const field = e.target.dataset.field;
+  const col = columns.find(c => c.id === id);
+  if (!col) return;
+  if (field === 'allowNegative') {
+    col.allowNegative = e.target.checked;
+  } else {
+    col[field] = e.target.value;
+  }
+  if (field === 'type') {
+    renderColumns(); // re-render to show/hide num opts
+  }
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+/* ========== Dictionaries UI ========== */
+function renderDicts() {
+  const grid = document.getElementById('dictGrid');
+  const dicts = allDicts();
+  grid.innerHTML = '';
+  for (const [id, d] of Object.entries(dicts)) {
+    const checked = selectedDictIds.has(id);
+    const isCustom = id.startsWith('custom_');
+    const div = document.createElement('div');
+    div.className = 'dict-item' + (checked ? ' selected' : '');
+    div.innerHTML = `
+      <input type="checkbox" ${checked ? 'checked' : ''} data-dict="${id}">
+      <div style="flex:1;min-width:0">
+        <div><strong>${escapeAttr(d.name)}</strong>
+          ${d.personal ? '<span class="badge badge-personal">личный</span>' : ''}
+          ${isCustom ? '<span class="badge">свой</span>' : ''}
+        </div>
+        <div class="meta">${d.words.length} значений</div>
+        <div class="dict-actions">
+          <button class="btn btn-ghost" type="button" data-edit-dict="${id}">Открыть</button>
+          ${isCustom ? `<button class="btn btn-ghost" type="button" data-del-dict="${id}" style="color:var(--danger)">Удалить</button>` : ''}
+        </div>
+      </div>
+    `;
+    div.querySelector('input').addEventListener('change', (e) => {
+      e.stopPropagation();
+      toggleDict(id, e.target.checked);
+    });
+    div.querySelector('input').addEventListener('click', (e) => e.stopPropagation());
+    div.querySelector('[data-edit-dict]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDictEditor(id);
+    });
+    const delBtn = div.querySelector('[data-del-dict]');
+    if (delBtn) {
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteCustomDict(id);
+      });
+    }
+    // click on card toggles selection (except buttons)
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.tagName === 'INPUT') return;
+      const cb = div.querySelector('input');
+      cb.checked = !cb.checked;
+      toggleDict(id, cb.checked);
+    });
+    grid.appendChild(div);
+  }
+}
+
+function toggleDict(id, on) {
+  if (on) selectedDictIds.add(id);
+  else selectedDictIds.delete(id);
+  renderDicts();
+}
+
+function deleteCustomDict(id) {
+  if (!customDicts[id]) return;
+  const name = customDicts[id].name;
+  if (!confirm(`Удалить словарь «${name}»?`)) return;
+  delete customDicts[id];
+  selectedDictIds.delete(id);
+  // clear dictId from columns that pointed here
+  columns.forEach(c => {
+    if (c.dictId === id) c.dictId = '';
+  });
+  renderDicts();
+  renderColumns();
+  toast(`Словарь «${name}» удалён`);
+}
+
+function addCustomDict() {
+  const name = document.getElementById('customDictName').value.trim();
+  const raw = document.getElementById('customDictWords').value;
+  if (!name) { toast('Укажите название словаря'); return; }
+  const words = raw
+    .split(/[\n,;|]+/)
+    .map(w => w.trim())
+    .filter(Boolean);
+  if (words.length < 1) { toast('Добавьте хотя бы одно слово'); return; }
+  const id = 'custom_' + uid();
+  customDicts[id] = { name, personal: false, words };
+  selectedDictIds.add(id);
+  document.getElementById('customDictName').value = '';
+  document.getElementById('customDictWords').value = '';
+  renderDicts();
+  renderColumns();
+  toast(`Словарь «${name}» добавлен (${words.length} слов)`);
+}
+
+/* ========== Dictionary editor modal ========== */
+let editingDictId = null;
+let editingWords = []; // working copy
+
+function openDictEditor(id) {
+  const dicts = allDicts();
+  const d = dicts[id];
+  if (!d) return;
+  editingDictId = id;
+  editingWords = d.words.slice();
+  document.getElementById('dictModalTitle').textContent = 'Словарь: ' + d.name;
+  document.getElementById('dictModalName').value = d.name;
+  document.getElementById('dictModalMeta').textContent =
+    (id.startsWith('custom_') ? 'Свой словарь' : 'Встроенный словарь (изменения только в этой сессии)') +
+    ' · ' + editingWords.length + ' слов';
+  document.getElementById('dictNewWord').value = '';
+  document.getElementById('dictBulkAdd').value = '';
+  const delBtn = document.getElementById('btnDeleteDict');
+  delBtn.style.display = id.startsWith('custom_') ? 'inline-flex' : 'none';
+  renderWordList();
+  document.getElementById('dictModal').classList.add('open');
+}
+
+function closeDictEditor() {
+  document.getElementById('dictModal').classList.remove('open');
+  editingDictId = null;
+  editingWords = [];
+}
+
+function renderWordList() {
+  const ul = document.getElementById('dictWordList');
+  ul.innerHTML = '';
+  editingWords.forEach((w, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <input type="text" value="${escapeAttr(w)}" data-word-idx="${i}">
+      <button class="btn btn-ghost" type="button" data-rm-word="${i}" title="Удалить">✕</button>
+    `;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('input[data-word-idx]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const i = parseInt(inp.dataset.wordIdx, 10);
+      editingWords[i] = inp.value;
+    });
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.wordIdx, 10);
+      editingWords[i] = inp.value;
+    });
+  });
+  ul.querySelectorAll('[data-rm-word]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.rmWord, 10);
+      editingWords.splice(i, 1);
+      renderWordList();
+      document.getElementById('dictModalMeta').textContent =
+        document.getElementById('dictModalMeta').textContent.replace(/\d+ слов/, editingWords.length + ' слов');
+    });
+  });
+}
+
+function addWordToEditor() {
+  const inp = document.getElementById('dictNewWord');
+  const w = inp.value.trim();
+  if (!w) return;
+  editingWords.push(w);
+  inp.value = '';
+  renderWordList();
+  document.getElementById('dictModalMeta').textContent =
+    document.getElementById('dictModalMeta').textContent.replace(/\d+ слов/, editingWords.length + ' слов');
+  inp.focus();
+}
+
+function bulkAddWords() {
+  const raw = document.getElementById('dictBulkAdd').value;
+  const words = raw.split(/[\n,;|]+/).map(w => w.trim()).filter(Boolean);
+  if (!words.length) return;
+  editingWords.push(...words);
+  document.getElementById('dictBulkAdd').value = '';
+  renderWordList();
+  document.getElementById('dictModalMeta').textContent =
+    document.getElementById('dictModalMeta').textContent.replace(/\d+ слов/, editingWords.length + ' слов');
+  toast(`Добавлено ${words.length} слов`);
+}
+
+function saveDictEditor() {
+  if (!editingDictId) return;
+  // sync any last input values
+  document.querySelectorAll('#dictWordList input[data-word-idx]').forEach(inp => {
+    const i = parseInt(inp.dataset.wordIdx, 10);
+    editingWords[i] = inp.value;
+  });
+  const cleaned = editingWords.map(w => String(w).trim()).filter(Boolean);
+  if (cleaned.length === 0) {
+    toast('Словарь не может быть пустым');
+    return;
+  }
+  const name = document.getElementById('dictModalName').value.trim() || 'Без названия';
+  if (editingDictId.startsWith('custom_')) {
+    customDicts[editingDictId] = {
+      name,
+      personal: false,
+      words: cleaned
+    };
+  } else if (BUILTIN_DICTS[editingDictId]) {
+    BUILTIN_DICTS[editingDictId].name = name;
+    BUILTIN_DICTS[editingDictId].words = cleaned;
+  }
+  closeDictEditor();
+  renderDicts();
+  renderColumns();
+  toast('Словарь сохранён');
+}
+
+function deleteDictFromModal() {
+  if (!editingDictId || !editingDictId.startsWith('custom_')) return;
+  const id = editingDictId;
+  closeDictEditor();
+  deleteCustomDict(id);
+}
+
+/* ========== Generation ========== */
+function wordsForColumn(col, activeWords) {
+  if (col.dictId) {
+    const dicts = allDicts();
+    const d = dicts[col.dictId];
+    if (d && d.words && d.words.length) return d.words;
+  }
+  return activeWords;
+}
+
+function generateValue(col, rowIndex, activeWords) {
+  switch (col.type) {
+    case 'dict':
+      return pick(wordsForColumn(col, activeWords));
+    case 'number': {
+      const allowNeg = col.allowNegative !== false;
+      const min = allowNeg ? -1000 : 0;
+      const max = 1000;
+      let n = Math.random() * (max - min) + min;
+      if (col.numFormat === 'int') return String(Math.round(n));
+      const digits = col.numFormat === '1' ? 1 : 2;
+      return n.toFixed(digits);
+    }
+    case 'date': {
+      // random date within last ~3 years
+      const start = new Date(2023, 0, 1).getTime();
+      const end = new Date(2026, 7, 1).getTime();
+      const d = new Date(start + Math.random() * (end - start));
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${dd}.${mm}.${d.getFullYear()}`;
+    }
+    case 'bool':
+      return Math.random() < 0.5 ? 'Да' : 'Нет';
+    case 'uuid': {
+      const h = () => Math.floor(Math.random() * 16).toString(16);
+      return h()+h()+h()+h()+h()+h()+h()+h()+'-'+h()+h()+h()+h()+'-'+h()+h()+h()+h()+'-'+h()+h()+h()+h()+'-'+h()+h()+h()+h()+h()+h()+h()+h()+h()+h()+h()+h();
+    }
+    case 'seq':
+      return String(rowIndex + 1);
+    case 'text': {
+      const syllables = ['ра','то','ми','ка','ле','су','но','ви','па','де','гу','ри','ла','бо','те','са','ну','фо','же','ки'];
+      const len = randInt(3, 6);
+      let s = '';
+      for (let i = 0; i < len; i++) s += pick(syllables);
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    default:
+      return '';
+  }
+}
+
+function generate() {
+  if (columns.length === 0) {
+    toast('Добавьте хотя бы одну колонку');
+    return;
+  }
+  const rowCount = Math.min(5000, Math.max(1, parseInt(document.getElementById('rowCount').value, 10) || 20));
+  const activeWords = getActiveWords();
+  const headers = columns.map((c, i) => c.name.trim() || `Колонка ${i + 1}`);
+  const rows = [];
+  for (let i = 0; i < rowCount; i++) {
+    rows.push(columns.map(col => generateValue(col, i, activeWords)));
+  }
+  lastTable = { headers, rows };
+  renderResult();
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderResult() {
+  if (!lastTable) return;
+  const { headers, rows } = lastTable;
+  document.getElementById('resultMeta').textContent = `${rows.length} строк × ${headers.length} колонок`;
+  const table = document.getElementById('resultTable');
+  let html = '<thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
+  for (const row of rows) {
+    html += '<tr>' + row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('') + '</tr>';
+  }
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ========== Export ========== */
+function toTsv() {
+  if (!lastTable) return '';
+  const { headers, rows } = lastTable;
+  const lines = [headers.join('\t')];
+  for (const r of rows) lines.push(r.join('\t'));
+  return lines.join('\n');
+}
+
+function toCsv() {
+  if (!lastTable) return '';
+  const { headers, rows } = lastTable;
+  const esc = v => {
+    const s = String(v);
+    if (/[;"\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+  const lines = [headers.map(esc).join(';')];
+  for (const r of rows) lines.push(r.map(esc).join(';'));
+  return lines.join('\n');
+}
+
+function copyText(text, label) {
+  navigator.clipboard.writeText(text).then(() => toast(label + ' скопировано')).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast(label + ' скопировано');
+  });
+}
+
+function downloadCsv() {
+  if (!lastTable) return;
+  const blob = new Blob(['\uFEFF' + toCsv()], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'test-table.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('CSV скачан');
+}
+
+/* ========== Init ========== */
+function resetAll() {
+  columns = [];
+  customDicts = {};
+  selectedDictIds = new Set();
+  lastTable = null;
+  document.getElementById('rowCount').value = 20;
+  document.getElementById('resultCard').style.display = 'none';
+  // default columns
+  addColumn({ id: uid(), name: 'Контрагент', type: 'dict', dictId: 'counterparties', numFormat: 'int', allowNegative: true });
+  addColumn({ id: uid(), name: 'Товар', type: 'dict', dictId: 'products', numFormat: 'int', allowNegative: true });
+  addColumn({ id: uid(), name: 'Количество', type: 'number', numFormat: 'int', allowNegative: false });
+  addColumn({ id: uid(), name: 'Цена', type: 'number', numFormat: '2', allowNegative: false });
+  addColumn({ id: uid(), name: 'Дата', type: 'date', numFormat: 'int', allowNegative: true });
+  renderDicts();
+}
+
+document.getElementById('btnAddCol').addEventListener('click', () => addColumn());
+document.getElementById('btnGenerate').addEventListener('click', generate);
+document.getElementById('btnAddCustomDict').addEventListener('click', addCustomDict);
+document.getElementById('btnReset').addEventListener('click', resetAll);
+document.getElementById('btnCopyTsv').addEventListener('click', () => copyText(toTsv(), 'TSV'));
+document.getElementById('btnCopyCsv').addEventListener('click', () => copyText(toCsv(), 'CSV'));
+document.getElementById('btnDownloadCsv').addEventListener('click', downloadCsv);
+
+// Dictionary modal
+document.getElementById('dictModalClose').addEventListener('click', closeDictEditor);
+document.getElementById('dictModalCancel').addEventListener('click', closeDictEditor);
+document.getElementById('dictModalSave').addEventListener('click', saveDictEditor);
+document.getElementById('btnDeleteDict').addEventListener('click', deleteDictFromModal);
+document.getElementById('btnAddWord').addEventListener('click', addWordToEditor);
+document.getElementById('btnBulkAdd').addEventListener('click', bulkAddWords);
+document.getElementById('dictNewWord').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addWordToEditor(); }
+});
+document.getElementById('dictModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeDictEditor();
+});
+
+resetAll();
+</script>
+</body>
+</html>

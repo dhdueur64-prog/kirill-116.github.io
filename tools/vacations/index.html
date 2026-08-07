@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Генератор графика отпусков — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #0f766e;
+      --primary-hover: #0d9488;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+      --vac: #14b8a6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #0f766e, #134e4a);
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
+    header .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 12px; border: none; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 4px 9px; font-size: 0.78rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-icon {
+      background: transparent; border: none; color: var(--muted);
+      cursor: pointer; padding: 2px 6px; font-size: 0.9rem; border-radius: 4px;
+    }
+    .btn-icon:hover { background: #f1f5f9; color: var(--danger); }
+    .btn-icon.edit:hover { color: var(--primary); }
+
+    nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      display: flex; gap: 2px;
+    }
+    nav button {
+      padding: 11px 18px; border: none; background: none;
+      font-size: 0.9rem; font-weight: 500; color: var(--muted);
+      cursor: pointer; border-bottom: 3px solid transparent;
+      white-space: nowrap; transition: color .15s, border-color .15s;
+    }
+    nav button:hover { color: var(--text); }
+    nav button.active {
+      color: var(--primary); border-bottom-color: var(--primary);
+    }
+
+    main { flex: 1; padding: 14px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card {
+      background: var(--card); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 16px; margin-bottom: 12px;
+    }
+    .card h2 {
+      font-size: 1rem; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+
+    .year-select {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.15); padding: 3px 10px; border-radius: 8px;
+    }
+    .year-select select {
+      background: transparent; border: none; color: #fff; font-weight: 600;
+      font-size: 1rem; padding: 3px; width: auto; cursor: pointer;
+    }
+    .year-select select option { color: #000; }
+
+    label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--muted); margin-bottom: 2px; }
+    input, select {
+      width: 100%; padding: 6px 9px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.875rem; background: #fff;
+    }
+    input:focus, select:focus {
+      outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(15,118,110,.15);
+    }
+    input.inline {
+      width: auto; min-width: 80px; padding: 3px 6px; font-size: 0.85rem;
+    }
+    input.inline-name { min-width: 160px; max-width: 220px; }
+    input.inline-days { width: 52px; text-align: center; }
+    input.inline-date { width: 118px; }
+
+    /* ========== Employees + Vacations (inline) ========== */
+    .emp-block {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .emp-header {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 12px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+    }
+    .emp-header .name-wrap { flex: 1; min-width: 140px; }
+    .emp-header .days-wrap { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--muted); }
+    .emp-header .rem {
+      font-weight: 600; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem;
+    }
+    .rem-ok { background: #d1fae5; color: #065f46; }
+    .rem-warn { background: #fef3c7; color: #92400e; }
+    .rem-bad { background: #fee2e2; color: #991b1b; }
+
+    .vac-rows { padding: 8px 12px 10px; }
+    .vac-row {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 6px 0; border-bottom: 1px dashed #e2e8f0;
+    }
+    .vac-row:last-child { border-bottom: none; }
+    .vac-row .days-info {
+      font-size: 0.8rem; color: var(--muted); min-width: 70px;
+    }
+    .vac-add-row {
+      margin-top: 6px;
+    }
+
+    .empty-state {
+      text-align: center; padding: 36px 16px; color: var(--muted);
+    }
+    .empty-state p { margin-top: 6px; }
+
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    /* ========== Calendar matrix (months × employees) ========== */
+    .cal-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .cal-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 0.78rem;
+    }
+    .cal-table th, .cal-table td {
+      border: 1px solid #cbd5e1;
+      padding: 4px 3px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .cal-table th {
+      background: #0f766e;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 6px 2px;
+    }
+    .cal-table th.emp-col {
+      background: #134e4a;
+      text-align: left;
+      padding-left: 8px;
+      width: 140px;
+      min-width: 120px;
+    }
+    .cal-table th.month-col {
+      width: auto;
+    }
+    .cal-table td.emp-col {
+      text-align: left;
+      padding: 5px 8px;
+      font-weight: 500;
+      background: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
+    }
+    .cal-table td.month-cell {
+      min-height: 28px;
+      height: 32px;
+      font-size: 0.72rem;
+      line-height: 1.25;
+      color: #0f766e;
+      font-weight: 600;
+      background: #fff;
+    }
+    .cal-table td.month-cell.has-vac {
+      background: #ccfbf1;
+    }
+    .cal-table td.month-cell .range {
+      display: block;
+    }
+    .cal-table tr:hover td.emp-col { background: #ecfdf5; }
+    .cal-table tr:hover td.month-cell.has-vac { background: #99f6e4; }
+
+    .cal-title {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .cal-title h2 {
+      font-size: 1.1rem;
+      margin: 0 0 2px;
+      justify-content: center;
+    }
+    .cal-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-swatch {
+      width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.1);
+    }
+
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e293b; color: #fff; padding: 9px 18px; border-radius: 8px;
+      font-size: 0.88rem; opacity: 0; transition: .25s; z-index: 200;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .print-header { display: none; }
+
+    /* ===== PRINT: one A4 landscape sheet ===== */
+    @media print {
+      body {
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        color-adjust: exact;
+        font-size: 9pt;
+      }
+      header, nav, .no-print, .btn, .toast { display: none !important; }
+      main { padding: 0; max-width: none; }
+      .panel { display: none !important; }
+      #panel-calendar { display: block !important; }
+      .card { box-shadow: none; border: none; padding: 0; margin: 0; }
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 6px;
+      }
+      .print-header h1 {
+        font-size: 14pt;
+        color: #000;
+        margin: 0 0 2px;
+      }
+      .print-header p {
+        font-size: 8pt;
+        color: #444;
+        margin: 0;
+      }
+      .cal-wrap {
+        overflow: visible;
+        border: none;
+      }
+      .cal-table {
+        font-size: 8pt;
+        width: 100%;
+      }
+      .cal-table th {
+        background: #0f766e !important;
+        color: #fff !important;
+        padding: 4px 1px;
+        font-size: 7.5pt;
+      }
+      .cal-table th.emp-col {
+        background: #134e4a !important;
+        width: 22mm;
+        max-width: 24mm;
+        font-size: 7.5pt;
+        padding: 3px 4px;
+      }
+      .cal-table td.emp-col {
+        background: #f1f5f9 !important;
+        font-size: 7.5pt;
+        padding: 3px 4px;
+        max-width: 24mm;
+      }
+      .cal-table td.month-cell {
+        height: auto;
+        min-height: 8mm;
+        padding: 2px 1px;
+        font-size: 7pt;
+        line-height: 1.2;
+      }
+      .cal-table td.month-cell.has-vac {
+        background: #ccfbf1 !important;
+      }
+      .legend { font-size: 7pt; margin-top: 4px; }
+      .cal-title, .cal-meta { display: none; }
+      @page {
+        size: A4 landscape;
+        margin: 8mm 6mm;
+      }
+    }
+
+    @media (max-width: 700px) {
+      header h1 { font-size: 1rem; }
+      .emp-header { flex-direction: column; align-items: flex-start; }
+      .cal-table th.emp-col, .cal-table td.emp-col { width: 90px; min-width: 80px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🏖 Генератор графика отпусков</h1>
+      <div class="actions">
+        <div class="year-select">
+          <span>Год:</span>
+          <select id="yearSelect"></select>
+        </div>
+        <button class="btn btn-outline btn-sm" id="btnExport" title="Экспорт">💾</button>
+        <button class="btn btn-outline btn-sm" id="btnImport" title="Импорт">📂</button>
+        <button class="btn btn-outline btn-sm" id="btnPrint" title="Печать">🖨 Печать</button>
+        <input type="file" id="importFile" accept=".json" style="display:none">
+      </div>
+    </header>
+
+    <nav>
+      <button class="active" data-panel="employees">Сотрудники с отпусками</button>
+      <button data-panel="calendar">Календарь</button>
+    </nav>
+
+    <main>
+      <!-- ===== EMPLOYEES + VACATIONS (inline) ===== -->
+      <div class="panel active" id="panel-employees">
+        <div class="card">
+          <h2>
+            Сотрудники и периоды отпусков
+            <button class="btn btn-primary btn-sm" id="btnAddEmployee">+ Сотрудник</button>
+          </h2>
+          <p class="hint no-print" style="margin-bottom:12px">
+            Редактируйте прямо в списке. Для каждого сотрудника добавляйте периоды «с … по …».
+            Праздники исключаются из подсчёта дней (ст. 120 ТК РФ).
+          </p>
+          <div id="employeesList"></div>
+          <div id="employeesEmpty" class="empty-state" style="display:none">
+            <div style="font-size:2rem">👥</div>
+            <p>Нет сотрудников. Нажмите «+ Сотрудник».</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CALENDAR ===== -->
+      <div class="panel" id="panel-calendar">
+        <div class="print-header">
+          <h1>График отпусков на <span id="printYear"></span> год</h1>
+          <p>Сформировано: <span id="printDate"></span></p>
+        </div>
+
+        <div class="card">
+          <div class="cal-title no-print">
+            <h2>График отпусков — <span id="calYearLabel"></span></h2>
+            <p class="cal-meta">Колонки — месяцы · в ячейках диапазоны дат · помещается на один лист A4 (альбом)</p>
+          </div>
+
+          <div class="cal-wrap">
+            <table class="cal-table" id="calTable">
+              <thead id="calHead"></thead>
+              <tbody id="calBody"></tbody>
+            </table>
+          </div>
+
+          <div class="legend no-print">
+            <div class="legend-item">
+              <span class="legend-swatch" style="background:#ccfbf1;border-color:#14b8a6"></span>
+              Есть отпуск в месяце
+            </div>
+            <div class="legend-item">В ячейке: дни отпуска (например 5–18 или 25–31 / 1–5 при переходе)</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'vacationSchedule_v2';
+    const MONTH_NAMES = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+    const MONTH_FULL = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+    // Базовые праздники РФ (MM-DD)
+    const BASE_HOLIDAYS = {
+      '01-01':'Новый год','01-02':'НГ','01-03':'НГ','01-04':'НГ','01-05':'НГ',
+      '01-06':'НГ','01-07':'Рождество','01-08':'НГ',
+      '02-23':'23 февраля','03-08':'8 марта',
+      '05-01':'1 мая','05-09':'9 мая','06-12':'День России','11-04':'4 ноября'
+    };
+
+    let state = {
+      year: new Date().getFullYear(),
+      employees: [], // { id, name, days }
+      vacations: [], // { id, empId, start, end }
+      holidays: {}   // 'YYYY-MM-DD' → name
+    };
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function toISO(d) {
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+
+    function parseISO(s) {
+      const [y, m, d] = s.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function getHolidayName(iso) {
+      return state.holidays[iso] || null;
+    }
+
+    /** Календарные дни отпуска минус праздники */
+    function countVacationDays(startISO, endISO) {
+      let count = 0;
+      const start = parseISO(startISO);
+      const end = parseISO(endISO);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        if (!getHolidayName(toISO(d))) count++;
+      }
+      return count;
+    }
+
+    function getUsedDays(empId) {
+      return state.vacations
+        .filter(v => v.empId === empId)
+        .reduce((s, v) => s + countVacationDays(v.start, v.end), 0);
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw);
+          state = { year: data.year || state.year, employees: data.employees || [], vacations: data.vacations || [], holidays: data.holidays || {} };
+        } else {
+          // migrate from v1 if present
+          const old = localStorage.getItem('vacationSchedule_v1');
+          if (old) {
+            const data = JSON.parse(old);
+            state = {
+              year: data.year || state.year,
+              employees: (data.employees || []).map(e => ({ id: e.id, name: e.name, days: e.days || 28 })),
+              vacations: (data.vacations || []).map(v => ({ id: v.id, empId: v.empId, start: v.start, end: v.end })),
+              holidays: data.holidays || {}
+            };
+            save();
+          }
+        }
+      } catch (e) { console.warn(e); }
+    }
+
+    function ensureHolidays(year) {
+      const has = Object.keys(state.holidays).some(k => k.startsWith(String(year)));
+      if (!has) {
+        Object.entries(BASE_HOLIDAYS).forEach(([md, name]) => {
+          state.holidays[year + '-' + md] = name;
+        });
+        save();
+      }
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ---------- Ranges for calendar cells ----------
+    /**
+     * Для сотрудника возвращает массив из 12 элементов:
+     * каждый — строка вида "5–18" или "25–31" / "1–5" (если период пересекает месяц)
+     * или несколько диапазонов через «, »
+     */
+    function getMonthRanges(empId) {
+      const year = state.year;
+      const result = Array.from({ length: 12 }, () => []);
+
+      state.vacations.filter(v => v.empId === empId).forEach(v => {
+        let cur = parseISO(v.start);
+        const end = parseISO(v.end);
+        if (cur.getFullYear() > year || end.getFullYear() < year) return;
+
+        // clamp to year
+        if (cur.getFullYear() < year) cur = new Date(year, 0, 1);
+        const endClamped = end.getFullYear() > year ? new Date(year, 11, 31) : end;
+
+        while (cur <= endClamped) {
+          const m = cur.getMonth();
+          const lastDayOfMonth = new Date(year, m + 1, 0).getDate();
+          const startDay = cur.getDate();
+          // end of this segment within the month
+          const segmentEnd = new Date(Math.min(
+            new Date(year, m, lastDayOfMonth).getTime(),
+            endClamped.getTime()
+          ));
+          const endDay = segmentEnd.getDate();
+
+          if (startDay === endDay) {
+            result[m].push(String(startDay));
+          } else {
+            result[m].push(startDay + '–' + endDay);
+          }
+
+          // next day after this month segment
+          cur = new Date(year, m + 1, 1);
+        }
+      });
+
+      return result.map(arr => arr.join(', '));
+    }
+
+    // ---------- Render employees (inline) ----------
+    function renderEmployees() {
+      const list = document.getElementById('employeesList');
+      const empty = document.getElementById('employeesEmpty');
+
+      if (!state.employees.length) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      list.innerHTML = state.employees.map(emp => {
+        const used = getUsedDays(emp.id);
+        const total = emp.days || 28;
+        const rem = total - used;
+        let remClass = 'rem-ok';
+        if (rem < 0) remClass = 'rem-bad';
+        else if (rem < 5) remClass = 'rem-warn';
+
+        const periods = state.vacations
+          .filter(v => v.empId === emp.id)
+          .sort((a, b) => a.start.localeCompare(b.start));
+
+        const vacRows = periods.map(v => {
+          const days = countVacationDays(v.start, v.end);
+          return `<div class="vac-row" data-vac-id="${v.id}">
+            <label style="margin:0">с</label>
+            <input type="date" class="inline inline-date vac-start" value="${v.start}">
+            <label style="margin:0">по</label>
+            <input type="date" class="inline inline-date vac-end" value="${v.end}">
+            <span class="days-info">${days} дн.</span>
+            <button type="button" class="btn-icon" data-del-vac="${v.id}" title="Удалить период">✕</button>
+          </div>`;
+        }).join('');
+
+        return `<div class="emp-block" data-emp-id="${emp.id}">
+          <div class="emp-header">
+            <div class="name-wrap">
+              <input type="text" class="inline inline-name emp-name" value="${esc(emp.name)}" placeholder="ФИО">
+            </div>
+            <div class="days-wrap">
+              <span>дней:</span>
+              <input type="number" class="inline inline-days emp-days" value="${total}" min="1" max="90">
+              <span class="rem ${remClass}" title="Остаток">${rem}</span>
+            </div>
+            <button type="button" class="btn-icon" data-del-emp="${emp.id}" title="Удалить сотрудника">🗑</button>
+          </div>
+          <div class="vac-rows">
+            ${vacRows || '<p class="hint" style="margin:4px 0 6px">Нет периодов отпуска</p>'}
+            <div class="vac-add-row">
+              <button type="button" class="btn btn-ghost btn-sm" data-add-vac="${emp.id}">+ Период отпуска</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // ---------- Render calendar ----------
+    function renderCalendar() {
+      const year = state.year;
+      document.getElementById('calYearLabel').textContent = year;
+      document.getElementById('printYear').textContent = year;
+      document.getElementById('printDate').textContent = new Date().toLocaleDateString('ru-RU', {
+        day: 'numeric', month: 'long', year: 'numeric'
+      });
+
+      const head = document.getElementById('calHead');
+      const body = document.getElementById('calBody');
+
+      head.innerHTML = '<tr><th class="emp-col">Сотрудник</th>' +
+        MONTH_NAMES.map((m, i) => `<th class="month-col" title="${MONTH_FULL[i]}">${m}</th>`).join('') +
+        '</tr>';
+
+      if (!state.employees.length) {
+        body.innerHTML = `<tr><td class="emp-col" colspan="13" style="text-align:center;padding:20px;color:var(--muted)">Добавьте сотрудников на вкладке «Сотрудники с отпусками»</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = state.employees.map(emp => {
+        const ranges = getMonthRanges(emp.id);
+        let cells = ranges.map((txt, i) => {
+          const has = txt.length > 0;
+          return `<td class="month-cell${has ? ' has-vac' : ''}">${has ? `<span class="range">${esc(txt)}</span>` : ''}</td>`;
+        }).join('');
+        return `<tr>
+          <td class="emp-col" title="${esc(emp.name)}">${esc(emp.name)}</td>
+          ${cells}
+        </tr>`;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderEmployees();
+      renderCalendar();
+    }
+
+    // ---------- Events ----------
+    document.querySelectorAll('nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+        if (btn.dataset.panel === 'calendar') renderCalendar();
+      });
+    });
+
+    document.getElementById('btnAddEmployee').addEventListener('click', () => {
+      state.employees.push({ id: uid(), name: 'Новый сотрудник', days: 28 });
+      save();
+      renderAll();
+      // focus last name input
+      const inputs = document.querySelectorAll('.emp-name');
+      if (inputs.length) {
+        const last = inputs[inputs.length - 1];
+        last.focus();
+        last.select();
+      }
+    });
+
+    // Delegated: inline edits + buttons
+    document.getElementById('employeesList').addEventListener('change', e => {
+      const block = e.target.closest('.emp-block');
+      if (!block) return;
+      const empId = block.dataset.empId;
+      const emp = state.employees.find(x => x.id === empId);
+      if (!emp) return;
+
+      if (e.target.classList.contains('emp-name')) {
+        emp.name = e.target.value.trim() || 'Без имени';
+        save();
+        renderCalendar();
+        return;
+      }
+      if (e.target.classList.contains('emp-days')) {
+        emp.days = Math.max(1, parseInt(e.target.value, 10) || 28);
+        save();
+        renderEmployees(); // update remainder badge
+        return;
+      }
+
+      const vacRow = e.target.closest('.vac-row');
+      if (vacRow) {
+        const vacId = vacRow.dataset.vacId;
+        const vac = state.vacations.find(x => x.id === vacId);
+        if (!vac) return;
+        if (e.target.classList.contains('vac-start')) {
+          vac.start = e.target.value;
+          if (vac.end < vac.start) vac.end = vac.start;
+        }
+        if (e.target.classList.contains('vac-end')) {
+          vac.end = e.target.value;
+          if (vac.end < vac.start) vac.start = vac.end;
+        }
+        save();
+        renderEmployees();
+        renderCalendar();
+      }
+    });
+
+    // also update remainder on input (live) for days field
+    document.getElementById('employeesList').addEventListener('input', e => {
+      if (e.target.classList.contains('emp-name')) {
+        // live name not critical for calendar until change/blur
+      }
+    });
+
+    document.getElementById('employeesList').addEventListener('click', e => {
+      const delEmp = e.target.closest('[data-del-emp]');
+      if (delEmp) {
+        const id = delEmp.dataset.delEmp;
+        if (!confirm('Удалить сотрудника и все его отпуска?')) return;
+        state.employees = state.employees.filter(x => x.id !== id);
+        state.vacations = state.vacations.filter(x => x.empId !== id);
+        save();
+        renderAll();
+        toast('Сотрудник удалён');
+        return;
+      }
+
+      const delVac = e.target.closest('[data-del-vac]');
+      if (delVac) {
+        state.vacations = state.vacations.filter(x => x.id !== delVac.dataset.delVac);
+        save();
+        renderAll();
+        return;
+      }
+
+      const addVac = e.target.closest('[data-add-vac]');
+      if (addVac) {
+        const empId = addVac.dataset.addVac;
+        const y = state.year;
+        state.vacations.push({
+          id: uid(),
+          empId,
+          start: y + '-07-01',
+          end: y + '-07-14'
+        });
+        save();
+        renderAll();
+        // focus the new end date of this employee
+        const block = document.querySelector(`.emp-block[data-emp-id="${empId}"]`);
+        if (block) {
+          const ends = block.querySelectorAll('.vac-end');
+          if (ends.length) ends[ends.length - 1].focus();
+        }
+      }
+    });
+
+    document.getElementById('yearSelect').addEventListener('change', e => {
+      state.year = parseInt(e.target.value, 10);
+      ensureHolidays(state.year);
+      save();
+      renderAll();
+    });
+
+    document.getElementById('btnPrint').addEventListener('click', () => {
+      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelector('nav button[data-panel="calendar"]').classList.add('active');
+      document.getElementById('panel-calendar').classList.add('active');
+      renderCalendar();
+      setTimeout(() => window.print(), 100);
+    });
+
+    document.getElementById('btnExport').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'grafik-otpuskov-' + state.year + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Экспортировано');
+    });
+
+    document.getElementById('btnImport').addEventListener('click', () => {
+      document.getElementById('importFile').click();
+    });
+    document.getElementById('importFile').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          state = {
+            year: data.year || state.year,
+            employees: data.employees || [],
+            vacations: data.vacations || [],
+            holidays: data.holidays || {}
+          };
+          ensureHolidays(state.year);
+          save();
+          initYearSelect();
+          renderAll();
+          toast('Импортировано');
+        } catch (err) {
+          toast('Ошибка импорта');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    function initYearSelect() {
+      const sel = document.getElementById('yearSelect');
+      const cur = new Date().getFullYear();
+      sel.innerHTML = '';
+      for (let y = cur - 1; y <= cur + 3; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === state.year) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    // Init
+    load();
+    if (!state.year) state.year = new Date().getFullYear();
+    ensureHolidays(state.year);
+    initYearSelect();
+    renderAll();
+  </script>
+</body>
+</html>
