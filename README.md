@@ -41,7 +41,8 @@ worktools/
 │   ├── tablegen/
 │   ├── transpose/
 │   ├── wordcount/
-│   └── flowchart/
+│   ├── flowchart/
+│   └── uchet/
 └── README.md
 ```
 
@@ -74,3 +75,4 @@ python -m http.server 8080
 | Транспонировщик таблиц | `tools/transpose/index.html` |
 | Построитель блок-схем | `tools/flowchart/index.html` |
 | Авто ОСС | `tools/oss/index.html` |
+| Учёт для магазина | `tools/uchet/index.html` |
