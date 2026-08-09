@@ -155,35 +155,56 @@
     });
   });
 
+  const KIND_LABELS = {
+    bug: 'Ошибка / баг',
+    idea: 'Нужен новый инструмент',
+    improve: 'Улучшение существующего',
+    other: 'Другое',
+  };
+
   async function sendFeedback(fields) {
     const c = window.WORKTOOLS_CONFIG || {};
-    const payload = {
-      type: 'feedback',
-      _subject: `[WorkTools] ${fields.kind || 'feedback'}: ${(fields.message || '').slice(0, 60)}`,
-      kind: fields.kind || 'other',
-      tool: fields.tool || '',
-      message: fields.message || '',
-      contact: fields.contact || '',
-      path: location.pathname,
-      ts: new Date().toISOString(),
-    };
+    const kindLabel = KIND_LABELS[fields.kind] || fields.kind || 'Обратная связь';
+    const subject = `[WorkTools] ${kindLabel}${fields.tool ? ' · ' + fields.tool : ''}`;
+    const text = [
+      `Тип: ${kindLabel}`,
+      `Инструмент: ${fields.tool || '—'}`,
+      '',
+      fields.message || '',
+      '',
+      `Контакт: ${fields.contact || '—'}`,
+      `Страница: ${location.pathname}`,
+      `Время: ${new Date().toISOString()}`,
+    ].join('\n');
 
-    if (c.endpoint) {
-      const res = await fetch(c.endpoint, {
+    // Web3Forms — без открытия почты у пользователя
+    if (c.web3formsKey) {
+      const body = {
+        access_key: c.web3formsKey,
+        subject: subject,
+        from_name: 'WorkTools Feedback',
+        message: text,
+      };
+      if (fields.contact && fields.contact.includes('@')) {
+        body.email = fields.contact.trim();
+      }
+
+      const res = await fetch('https://api.web3forms.com/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Ошибка отправки (' + res.status + ')');
-      return { method: 'endpoint' };
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || 'Ошибка Web3Forms (' + res.status + ')');
+      }
+      return { method: 'web3forms' };
     }
 
+    // Запасной mailto
     if (c.feedbackEmail) {
-      const subject = encodeURIComponent(payload._subject);
-      const body = encodeURIComponent(
-        `Тип: ${payload.kind}\nИнструмент: ${payload.tool || '—'}\n\n${payload.message}\n\nКонтакт: ${payload.contact || '—'}\nСтраница: ${payload.path}\nВремя: ${payload.ts}`
-      );
-      window.location.href = `mailto:${c.feedbackEmail}?subject=${subject}&body=${body}`;
+      window.location.href =
+        `mailto:${c.feedbackEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
       return { method: 'mailto' };
     }
 
@@ -220,7 +241,7 @@
         if (feedbackStatus) {
           if (result.method === 'none') {
             feedbackStatus.textContent =
-              'Не настроен приём сообщений. Укажите endpoint или feedbackEmail в js/config.js.';
+              'Не настроен приём сообщений. Укажите web3formsKey в js/config.js.';
             feedbackStatus.className = 'feedback-status feedback-status--warn';
           } else if (result.method === 'mailto') {
             feedbackStatus.textContent = 'Откроется почтовый клиент для отправки.';

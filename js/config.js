@@ -1,17 +1,13 @@
 /**
  * WorkTools — настройки обратной связи
  *
- * Чтобы получать сообщения через Formspree (без открытия почтового клиента):
- * 1. Зарегистрируйтесь на https://formspree.io (бесплатно)
- * 2. Создайте форму и вставьте URL вида https://formspree.io/f/xxxxxxxx
- * 3. Укажите его в endpoint ниже
- *
- * Сейчас используется mailto на feedbackEmail.
+ * Web3Forms: сообщения уходят на почту, привязанную к access key
+ * (без открытия почтового клиента у пользователя).
  */
 window.WORKTOOLS_CONFIG = {
-  // Formspree / webhook (если пусто — mailto)
-  endpoint: '',
+  // Web3Forms access key
+  web3formsKey: 'c01901c4-71f7-4b50-919a-5f73ae278a11',
 
-  // Email для обратной связи
+  // Запасной mailto, если Web3Forms недоступен
   feedbackEmail: 'Kirill-116@yandex.ru',
 };
