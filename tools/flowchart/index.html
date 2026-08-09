@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Построитель блок-схем — WorkTools</title>
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
+      --success: #057a55;
+      --danger: #c81e1e;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .app { display: flex; flex-direction: column; height: 100vh; }
+    header {
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+      flex-shrink: 0;
+      z-index: 20;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; white-space: nowrap; }
+    header .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 12px; border: none; border-radius: 8px;
+      font-size: 0.825rem; font-weight: 500; cursor: pointer;
+      transition: background .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #046c4e; }
+    .btn-outline {
+      background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.5);
+    }
+    .btn-outline:hover { background: rgba(255,255,255,.12); }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn-ghost {
+      background: #fff; color: var(--text); border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f8fafc; }
+    .workspace {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 200px;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      padding: 12px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sidebar h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .palette { display: flex; flex-direction: column; gap: 8px; }
+    .palette-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      cursor: grab;
+      user-select: none;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+      font-size: 0.85rem;
+    }
+    .palette-item:hover {
+      border-color: var(--primary);
+      background: #eff6ff;
+      box-shadow: 0 1px 4px rgba(26,86,219,.12);
+    }
+    .palette-item:active { cursor: grabbing; }
+    .palette-shape {
+      width: 28px; height: 20px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .palette-shape svg { width: 100%; height: 100%; }
+    .hint-box {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.45;
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+    }
+    .hint-box strong { color: var(--text); }
+    .canvas-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.03) 1px, transparent 1px),
+        linear-gradient(rgba(0,0,0,.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+      background-color: #e8eef5;
+    }
+    #svgRoot {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: default;
+    }
+    .node { cursor: move; }
+    .node.selected .node-body {
+      stroke: #0f172a;
+      stroke-width: 2.5;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.18));
+    }
+    .node-body {
+      stroke: #334155;
+      stroke-width: 1.5;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,.1));
+    }
+    .node-text {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      fill: #0f172a;
+      pointer-events: none;
+      user-select: none;
+    }
+    .port {
+      fill: #fff;
+      stroke: #475569;
+      stroke-width: 1.5;
+      cursor: crosshair;
+      opacity: 0;
+      transition: opacity .12s;
+    }
+    .node:hover .port,
+    .node.selected .port,
+    .port.active { opacity: 1; }
+    .port:hover, .port.active {
+      fill: var(--primary);
+      stroke: var(--primary);
+    }
+    .resize-handle {
+      fill: #fff;
+      stroke: var(--primary);
+      stroke-width: 1.5;
+      cursor: nwse-resize;
+    }
+    .resize-handle.n, .resize-handle.s { cursor: ns-resize; }
+    .resize-handle.e, .resize-handle.w { cursor: ew-resize; }
+    .resize-handle.ne, .resize-handle.sw { cursor: nesw-resize; }
+    .resize-handle.nw, .resize-handle.se { cursor: nwse-resize; }
+    .edge {
+      fill: none;
+      stroke: #475569;
+      stroke-width: 2;
+      marker-end: url(#arrowhead);
+      cursor: pointer;
+    }
+    .edge.selected {
+      stroke: var(--primary);
+      stroke-width: 2.5;
+      marker-end: url(#arrowhead-selected);
+    }
+    .edge-hit {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 14;
+      cursor: pointer;
+    }
+    .temp-edge {
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 2;
+      stroke-dasharray: 6 4;
+      pointer-events: none;
+    }
+    .status-bar {
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .status-bar .left { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card);
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.2);
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 12px; }
+    .modal textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .modal textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+    .file-input { display: none; }
+    @media (max-width: 700px) {
+      .sidebar { width: 150px; padding: 8px; }
+      .palette-item { font-size: 0.78rem; padding: 6px 8px; }
+      header h1 { font-size: 1rem; }
+      .btn { padding: 6px 10px; font-size: 0.78rem; }
+    }
+    @media print {
+      @page { margin: 12mm; size: auto; }
+      body { background: #fff !important; overflow: visible !important; }
+      .app { height: auto !important; min-height: 0 !important; }
+      header,
+      .sidebar,
+      .status-bar,
+      .modal-overlay { display: none !important; }
+      .workspace { display: block !important; overflow: visible !important; }
+      .canvas-wrap {
+        background: #fff !important;
+        overflow: visible !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      #svgRoot {
+        width: 100% !important;
+        height: auto !important;
+        max-width: 100%;
+      }
+      .port,
+      .resize-handle,
+      .temp-edge { display: none !important; }
+      .node.selected .node-body {
+        stroke-width: 1.5 !important;
+        filter: none !important;
+      }
+      .edge.selected {
+        stroke: #475569 !important;
+        stroke-width: 2 !important;
+        marker-end: url(#arrowhead) !important;
+      }
+      .node-body { filter: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>📐 Построитель блок-схем</h1>
+      <div class="actions">
+        <button type="button" class="btn btn-outline btn-sm" id="btnEdit" title="Изменить текст (F2 / Enter)">✎ Текст</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnUndo" title="Отменить (Ctrl+Z)">↩ Отмена</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnClear" title="Очистить схему">Очистить</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnLoad">📂 Загрузить JSON</button>
+        <button type="button" class="btn btn-success btn-sm" id="btnSave">💾 Сохранить JSON</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnPrint" title="Печать схемы">🖨 Печать</button>
+        <a href="../../index.html" class="btn btn-outline btn-sm">← Каталог</a>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <div>
+          <h3>Блоки</h3>
+          <div class="palette" id="palette">
+            <div class="palette-item" draggable="true" data-type="start">
+              <div class="palette-shape">
+                <svg viewBox="0 0 40 24"><ellipse cx="20" cy="12" rx="18" ry="10" fill="#d1fae5" stroke="#059669" stroke-width="2"/></svg>
+              </div>
+              <span>Начало / Конец</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="process">
+              <div class="palette-shape">
+                <svg viewBox="0 0 40 24"><rect x="2" y="2" width="36" height="20" rx="3" fill="#dbeafe" stroke="#1a56db" stroke-width="2"/></svg>
+              </div>
+              <span>Процесс</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="decision">
+              <div class="palette-shape">
+                <svg viewBox="0 0 40 24"><polygon points="20,2 38,12 20,22 2,12" fill="#fef3c7" stroke="#d97706" stroke-width="2"/></svg>
+              </div>
+              <span>Решение</span>
+            </div>
+            <div class="palette-item" draggable="true" data-type="io">
+              <div class="palette-shape">
+                <svg viewBox="0 0 40 24"><polygon points="8,2 38,2 32,22 2,22" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/></svg>
+              </div>
+              <span>Ввод / Вывод</span>
+            </div>
+          </div>
+        </div>
+        <div class="hint-box">
+          <strong>Как пользоваться</strong><br>
+          • Перетащите блок на холст<br>
+          • Тяните за точку — соединить<br>
+          • Двойной клик / F2 — текст<br>
+          • Углы выбранного — растянуть<br>
+          • Delete — удалить<br>
+          • JSON — сохранить / загрузить<br>
+          • Печать — только схема
+        </div>
+      </aside>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <svg id="svgRoot" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#475569"/>
+            </marker>
+            <marker id="arrowhead-selected" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+              <polygon points="0 0, 10 3.5, 0 7" fill="#1a56db"/>
+            </marker>
+          </defs>
+          <g id="edgesLayer"></g>
+          <g id="nodesLayer"></g>
+          <path id="tempEdge" class="temp-edge" d="" style="display:none"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="left">
+        <span id="statusNodes">Блоков: 0</span>
+        <span id="statusEdges">Связей: 0</span>
+        <span id="statusHint">Выберите блок и нажмите «Текст» или F2</span>
+      </div>
+      <span>Данные только в браузере</span>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="editModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-labelledby="editTitle">
+      <h2 id="editTitle">Текст блока</h2>
+      <textarea id="editText" rows="3" placeholder="Введите текст…"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="editCancel">Отмена</button>
+        <button type="button" class="btn btn-primary" id="editOk">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" class="file-input" accept=".json,application/json">
+
+  <script>
+(function () {
+  'use strict';
+
+  const DEFAULT_W = 140;
+  const DEFAULT_H = 52;
+  const MIN_W = 80;
+  const MIN_H = 36;
+  const PORT_R = 6;
+  const HANDLE = 8;
+
+  const TYPE_DEFAULTS = {
+    start:    { text: 'Начало',  fill: '#d1fae5', stroke: '#059669' },
+    process:  { text: 'Процесс', fill: '#dbeafe', stroke: '#1a56db' },
+    decision: { text: 'Условие?', fill: '#fef3c7', stroke: '#d97706' },
+    io:       { text: 'Данные',  fill: '#ede9fe', stroke: '#7c3aed' },
+    end:      { text: 'Конец',   fill: '#fee2e2', stroke: '#dc2626' }
+  };
+
+  let nodes = [];
+  let edges = [];
+  let nextId = 1;
+  let selectedId = null;
+  let selectedEdgeId = null;
+  let history = [];
+  const MAX_HISTORY = 40;
+
+  let dragNode = null;
+  let dragOffset = { x: 0, y: 0 };
+  let dragMoved = false;
+  let resizeState = null; // { node, handle, startX, startY, origX, origY, origW, origH }
+  let connecting = null;
+  let viewBox = { x: 0, y: 0, w: 1200, h: 800 };
+  let editingId = null;
+  let lastClick = { id: null, time: 0 };
+
+  const svg = document.getElementById('svgRoot');
+  const nodesLayer = document.getElementById('nodesLayer');
+  const edgesLayer = document.getElementById('edgesLayer');
+  const tempEdge = document.getElementById('tempEdge');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const editModal = document.getElementById('editModal');
+  const editText = document.getElementById('editText');
+
+  function uid() { return 'n' + (nextId++); }
+  function edgeUid() { return 'e' + (nextId++); }
+
+  function nw(node) { return node.w || DEFAULT_W; }
+  function nh(node) { return node.h || DEFAULT_H; }
+
+  function pushHistory() {
+    history.push(JSON.stringify({ nodes, edges, nextId }));
+    if (history.length > MAX_HISTORY) history.shift();
+  }
+
+  function undo() {
+    if (history.length < 2) return;
+    history.pop();
+    const snap = JSON.parse(history[history.length - 1]);
+    nodes = snap.nodes;
+    edges = snap.edges;
+    nextId = snap.nextId;
+    selectedId = null;
+    selectedEdgeId = null;
+    render();
+  }
+
+  function updateStatus() {
+    document.getElementById('statusNodes').textContent = 'Блоков: ' + nodes.length;
+    document.getElementById('statusEdges').textContent = 'Связей: ' + edges.length;
+  }
+
+  function getPortPos(node, port) {
+    const w = nw(node), h = nh(node);
+    const cx = node.x + w / 2;
+    const cy = node.y + h / 2;
+    switch (port) {
+      case 'top':    return { x: cx, y: node.y };
+      case 'bottom': return { x: cx, y: node.y + h };
+      case 'left':   return { x: node.x, y: cy };
+      case 'right':  return { x: node.x + w, y: cy };
+      default:       return { x: cx, y: cy };
+    }
+  }
+
+  function nearestPort(node, px, py) {
+    const ports = ['top', 'bottom', 'left', 'right'];
+    let best = 'bottom', bestDist = Infinity;
+    for (const p of ports) {
+      const pos = getPortPos(node, p);
+      const d = (pos.x - px) ** 2 + (pos.y - py) ** 2;
+      if (d < bestDist) { bestDist = d; best = p; }
+    }
+    return best;
+  }
+
+  function edgePath(fromNode, fromPort, toNode, toPort) {
+    const a = getPortPos(fromNode, fromPort);
+    const b = getPortPos(toNode, toPort);
+    const dx = Math.abs(b.x - a.x);
+    const dy = Math.abs(b.y - a.y);
+    const curve = Math.max(40, Math.min(dx, dy) * 0.5 + 20);
+    let c1x = a.x, c1y = a.y, c2x = b.x, c2y = b.y;
+    if (fromPort === 'bottom') c1y += curve;
+    if (fromPort === 'top')    c1y -= curve;
+    if (fromPort === 'right')  c1x += curve;
+    if (fromPort === 'left')   c1x -= curve;
+    if (toPort === 'bottom')   c2y += curve;
+    if (toPort === 'top')      c2y -= curve;
+    if (toPort === 'right')    c2x += curve;
+    if (toPort === 'left')     c2x -= curve;
+    return `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${b.x} ${b.y}`;
+  }
+
+  function nodeShapePath(type, w, h) {
+    if (type === 'start' || type === 'end') {
+      const rx = w / 2, ry = h / 2;
+      return `M ${rx},0 A ${rx},${ry} 0 1,1 ${rx},${h} A ${rx},${ry} 0 1,1 ${rx},0 Z`;
+    }
+    if (type === 'decision') {
+      return `M ${w / 2},0 L ${w},${h / 2} L ${w / 2},${h} L 0,${h / 2} Z`;
+    }
+    if (type === 'io') {
+      const skew = Math.min(16, w * 0.12);
+      return `M ${skew},0 L ${w},0 L ${w - skew},${h} L 0,${h} Z`;
+    }
+    return `M 0,0 L ${w},0 L ${w},${h} L 0,${h} Z`;
+  }
+
+  function wrapText(textEl, label, w, h) {
+    textEl.textContent = '';
+    const maxChars = Math.max(8, Math.floor(w / 8));
+    if (label.length <= maxChars) {
+      textEl.textContent = label;
+      return;
+    }
+    const mid = Math.ceil(label.length / 2);
+    let split = label.lastIndexOf(' ', mid);
+    if (split < 3) split = mid;
+    const t1 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    t1.setAttribute('x', w / 2);
+    t1.setAttribute('dy', '-0.45em');
+    t1.textContent = label.slice(0, split).trim();
+    const t2 = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+    t2.setAttribute('x', w / 2);
+    t2.setAttribute('dy', '1.15em');
+    t2.textContent = label.slice(split).trim();
+    textEl.appendChild(t1);
+    textEl.appendChild(t2);
+  }
+
+  function renderNode(node) {
+    const w = nw(node), h = nh(node);
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('node');
+    if (node.id === selectedId) g.classList.add('selected');
+    g.setAttribute('data-id', node.id);
+    g.setAttribute('transform', `translate(${node.x},${node.y})`);
+
+    const def = TYPE_DEFAULTS[node.type] || TYPE_DEFAULTS.process;
+    const body = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    body.classList.add('node-body');
+    body.setAttribute('d', nodeShapePath(node.type, w, h));
+    body.setAttribute('fill', def.fill);
+    body.setAttribute('stroke', def.stroke);
+    g.appendChild(body);
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.classList.add('node-text');
+    text.setAttribute('x', w / 2);
+    text.setAttribute('y', h / 2 + 1);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    wrapText(text, node.text || '', w, h);
+    g.appendChild(text);
+
+    ['top', 'right', 'bottom', 'left'].forEach(port => {
+      const pos = getPortPos({ x: 0, y: 0, w: w, h: h }, port);
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.classList.add('port');
+      c.setAttribute('cx', pos.x);
+      c.setAttribute('cy', pos.y);
+      c.setAttribute('r', PORT_R);
+      c.setAttribute('data-port', port);
+      c.setAttribute('data-id', node.id);
+      g.appendChild(c);
+    });
+
+    if (node.id === selectedId) {
+      const handles = [
+        { name: 'nw', x: 0, y: 0 },
+        { name: 'n',  x: w / 2, y: 0 },
+        { name: 'ne', x: w, y: 0 },
+        { name: 'e',  x: w, y: h / 2 },
+        { name: 'se', x: w, y: h },
+        { name: 's',  x: w / 2, y: h },
+        { name: 'sw', x: 0, y: h },
+        { name: 'w',  x: 0, y: h / 2 }
+      ];
+      handles.forEach(hh => {
+        const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        r.classList.add('resize-handle', hh.name);
+        r.setAttribute('x', hh.x - HANDLE / 2);
+        r.setAttribute('y', hh.y - HANDLE / 2);
+        r.setAttribute('width', HANDLE);
+        r.setAttribute('height', HANDLE);
+        r.setAttribute('rx', 1);
+        r.setAttribute('data-handle', hh.name);
+        r.setAttribute('data-id', node.id);
+        g.appendChild(r);
+      });
+    }
+
+    g.addEventListener('mousedown', onNodeMouseDown);
+    return g;
+  }
+
+  function renderEdge(edge) {
+    const from = nodes.find(n => n.id === edge.from);
+    const to = nodes.find(n => n.id === edge.to);
+    if (!from || !to) return null;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('data-edge-id', edge.id);
+
+    const d = edgePath(from, edge.fromPort, to, edge.toPort);
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hit.classList.add('edge-hit');
+    hit.setAttribute('d', d);
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.classList.add('edge');
+    if (edge.id === selectedEdgeId) path.classList.add('selected');
+    path.setAttribute('d', d);
+
+    hit.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      selectedEdgeId = edge.id;
+      selectedId = null;
+      render();
+    });
+
+    g.appendChild(hit);
+    g.appendChild(path);
+    return g;
+  }
+
+  function render() {
+    nodesLayer.innerHTML = '';
+    edgesLayer.innerHTML = '';
+    edges.forEach(e => {
+      const el = renderEdge(e);
+      if (el) edgesLayer.appendChild(el);
+    });
+    nodes.forEach(n => nodesLayer.appendChild(renderNode(n)));
+    updateStatus();
+  }
+
+  function clientToSvg(clientX, clientY) {
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    return pt.matrixTransform(ctm.inverse());
+  }
+
+  function fitViewBox() {
+    const rect = canvasWrap.getBoundingClientRect();
+    viewBox.w = Math.max(rect.width, 400);
+    viewBox.h = Math.max(rect.height, 300);
+    svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+  }
+
+  // --- Edit text ---
+  function openEditModal(node) {
+    if (!node) return;
+    editingId = node.id;
+    editText.value = node.text || '';
+    editModal.classList.add('open');
+    editModal.setAttribute('aria-hidden', 'false');
+    setTimeout(() => {
+      editText.focus();
+      editText.select();
+    }, 30);
+  }
+
+  function closeEditModal() {
+    editModal.classList.remove('open');
+    editModal.setAttribute('aria-hidden', 'true');
+    editingId = null;
+  }
+
+  function saveEditText() {
+    if (!editingId) {
+      closeEditModal();
+      return;
+    }
+    const node = nodes.find(n => n.id === editingId);
+    if (node) {
+      pushHistory();
+      const val = editText.value.trim();
+      const def = TYPE_DEFAULTS[node.type] || TYPE_DEFAULTS.process;
+      node.text = val || def.text;
+      render();
+    }
+    closeEditModal();
+  }
+
+  document.getElementById('editOk').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    saveEditText();
+  });
+  document.getElementById('editCancel').addEventListener('click', (e) => {
+    e.preventDefault();
+    closeEditModal();
+  });
+  editModal.addEventListener('click', (e) => {
+    if (e.target === editModal) closeEditModal();
+  });
+  editText.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveEditText();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeEditModal();
+    }
+  });
+
+  document.getElementById('btnEdit').addEventListener('click', () => {
+    if (!selectedId) {
+      document.getElementById('statusHint').textContent = 'Сначала выберите блок';
+      return;
+    }
+    const node = nodes.find(n => n.id === selectedId);
+    openEditModal(node);
+  });
+
+  // --- Node mouse ---
+  function onNodeMouseDown(e) {
+    if (e.button !== 0) return;
+    const g = e.currentTarget;
+    const id = g.getAttribute('data-id');
+    const target = e.target;
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+
+    // Resize handle
+    if (target.classList.contains('resize-handle')) {
+      e.stopPropagation();
+      e.preventDefault();
+      const handle = target.getAttribute('data-handle');
+      const pt = clientToSvg(e.clientX, e.clientY);
+      pushHistory();
+      resizeState = {
+        node,
+        handle,
+        startX: pt.x,
+        startY: pt.y,
+        origX: node.x,
+        origY: node.y,
+        origW: nw(node),
+        origH: nh(node)
+      };
+      selectedId = id;
+      selectedEdgeId = null;
+      render();
+      return;
+    }
+
+    // Port → connect
+    if (target.classList.contains('port')) {
+      e.stopPropagation();
+      e.preventDefault();
+      connecting = {
+        fromId: id,
+        fromPort: target.getAttribute('data-port')
+      };
+      selectedId = id;
+      selectedEdgeId = null;
+      target.classList.add('active');
+      tempEdge.style.display = '';
+      render();
+      return;
+    }
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Double-click detection (manual — more reliable than dblclick with drag)
+    const now = Date.now();
+    if (lastClick.id === id && now - lastClick.time < 350) {
+      lastClick = { id: null, time: 0 };
+      selectedId = id;
+      selectedEdgeId = null;
+      dragNode = null;
+      render();
+      openEditModal(node);
+      return;
+    }
+    lastClick = { id, time: now };
+
+    selectedId = id;
+    selectedEdgeId = null;
+    const pt = clientToSvg(e.clientX, e.clientY);
+    dragNode = node;
+    dragOffset = { x: pt.x - node.x, y: pt.y - node.y };
+    dragMoved = false;
+    render();
+  }
+
+  window.addEventListener('mousemove', (e) => {
+    const pt = clientToSvg(e.clientX, e.clientY);
+
+    if (resizeState) {
+      const { node, handle, startX, startY, origX, origY, origW, origH } = resizeState;
+      const dx = pt.x - startX;
+      const dy = pt.y - startY;
+      let x = origX, y = origY, w = origW, h = origH;
+
+      if (handle.includes('e')) w = Math.max(MIN_W, origW + dx);
+      if (handle.includes('s')) h = Math.max(MIN_H, origH + dy);
+      if (handle.includes('w')) {
+        w = Math.max(MIN_W, origW - dx);
+        x = origX + (origW - w);
+      }
+      if (handle.includes('n')) {
+        h = Math.max(MIN_H, origH - dy);
+        y = origY + (origH - h);
+      }
+
+      node.x = Math.round(x / 5) * 5;
+      node.y = Math.round(y / 5) * 5;
+      node.w = Math.round(w / 5) * 5;
+      node.h = Math.round(h / 5) * 5;
+      render();
+      return;
+    }
+
+    if (dragNode) {
+      const nx = Math.round((pt.x - dragOffset.x) / 10) * 10;
+      const ny = Math.round((pt.y - dragOffset.y) / 10) * 10;
+      if (nx !== dragNode.x || ny !== dragNode.y) {
+        if (!dragMoved) {
+          pushHistory();
+          dragMoved = true;
+        }
+        dragNode.x = nx;
+        dragNode.y = ny;
+        render();
+      }
+      return;
+    }
+
+    if (connecting) {
+      const from = nodes.find(n => n.id === connecting.fromId);
+      if (!from) return;
+      const a = getPortPos(from, connecting.fromPort);
+      const dx = Math.abs(pt.x - a.x);
+      const dy = Math.abs(pt.y - a.y);
+      const curve = Math.max(30, Math.min(dx, dy) * 0.4 + 15);
+      let c1x = a.x, c1y = a.y;
+      if (connecting.fromPort === 'bottom') c1y += curve;
+      if (connecting.fromPort === 'top') c1y -= curve;
+      if (connecting.fromPort === 'right') c1x += curve;
+      if (connecting.fromPort === 'left') c1x -= curve;
+      tempEdge.setAttribute('d', `M ${a.x} ${a.y} C ${c1x} ${c1y}, ${pt.x} ${pt.y}, ${pt.x} ${pt.y}`);
+    }
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (resizeState) {
+      resizeState = null;
+      return;
+    }
+
+    if (dragNode) {
+      dragNode = null;
+      dragMoved = false;
+      return;
+    }
+
+    if (connecting) {
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      let toId = null;
+      let toPort = null;
+      if (target) {
+        if (target.classList.contains('port')) {
+          toId = target.getAttribute('data-id');
+          toPort = target.getAttribute('data-port');
+        } else {
+          const g = target.closest && target.closest('.node');
+          if (g) {
+            toId = g.getAttribute('data-id');
+            const node = nodes.find(n => n.id === toId);
+            if (node) {
+              const pt = clientToSvg(e.clientX, e.clientY);
+              toPort = nearestPort(node, pt.x, pt.y);
+            }
+          }
+        }
+      }
+
+      if (toId && toId !== connecting.fromId && toPort) {
+        const exists = edges.some(ed =>
+          ed.from === connecting.fromId && ed.to === toId &&
+          ed.fromPort === connecting.fromPort && ed.toPort === toPort
+        );
+        if (!exists) {
+          pushHistory();
+          edges.push({
+            id: edgeUid(),
+            from: connecting.fromId,
+            fromPort: connecting.fromPort,
+            to: toId,
+            toPort: toPort
+          });
+        }
+      }
+
+      connecting = null;
+      tempEdge.style.display = 'none';
+      tempEdge.setAttribute('d', '');
+      document.querySelectorAll('.port.active').forEach(p => p.classList.remove('active'));
+      render();
+    }
+  });
+
+  svg.addEventListener('mousedown', (e) => {
+    if (e.target === svg || e.target.id === 'edgesLayer' || e.target.id === 'nodesLayer') {
+      selectedId = null;
+      selectedEdgeId = null;
+      lastClick = { id: null, time: 0 };
+      render();
+    }
+  });
+
+  // Palette
+  document.querySelectorAll('.palette-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', item.getAttribute('data-type'));
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+    item.addEventListener('click', () => {
+      const type = item.getAttribute('data-type');
+      const cx = viewBox.x + viewBox.w / 2 - DEFAULT_W / 2;
+      const cy = viewBox.y + viewBox.h / 2 - DEFAULT_H / 2 + nodes.length * 12;
+      addNode(type, cx, cy);
+    });
+  });
+
+  canvasWrap.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+
+  canvasWrap.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('text/plain');
+    if (!TYPE_DEFAULTS[type]) return;
+    const pt = clientToSvg(e.clientX, e.clientY);
+    addNode(type, pt.x - DEFAULT_W / 2, pt.y - DEFAULT_H / 2);
+  });
+
+  function addNode(type, x, y) {
+    pushHistory();
+    const def = TYPE_DEFAULTS[type] || TYPE_DEFAULTS.process;
+    const node = {
+      id: uid(),
+      type: type,
+      x: Math.round(x / 10) * 10,
+      y: Math.round(y / 10) * 10,
+      w: DEFAULT_W,
+      h: DEFAULT_H,
+      text: def.text
+    };
+    nodes.push(node);
+    selectedId = node.id;
+    selectedEdgeId = null;
+    render();
+  }
+
+  // Keyboard
+  window.addEventListener('keydown', (e) => {
+    if (editModal.classList.contains('open')) return;
+
+    if ((e.key === 'Delete' || e.key === 'Backspace') && (selectedId || selectedEdgeId)) {
+      e.preventDefault();
+      pushHistory();
+      if (selectedId) {
+        nodes = nodes.filter(n => n.id !== selectedId);
+        edges = edges.filter(ed => ed.from !== selectedId && ed.to !== selectedId);
+        selectedId = null;
+      }
+      if (selectedEdgeId) {
+        edges = edges.filter(ed => ed.id !== selectedEdgeId);
+        selectedEdgeId = null;
+      }
+      render();
+    }
+
+    if ((e.key === 'F2' || e.key === 'Enter') && selectedId) {
+      e.preventDefault();
+      const node = nodes.find(n => n.id === selectedId);
+      openEditModal(node);
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      e.preventDefault();
+      undo();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveJson();
+    }
+  });
+
+  // Save / Load
+  function exportData() {
+    return {
+      version: 1,
+      app: 'WorkTools Flowchart',
+      nodes: nodes.map(n => ({
+        id: n.id,
+        type: n.type,
+        x: n.x,
+        y: n.y,
+        w: nw(n),
+        h: nh(n),
+        text: n.text
+      })),
+      edges: edges.map(e => ({
+        id: e.id,
+        from: e.from,
+        fromPort: e.fromPort,
+        to: e.to,
+        toPort: e.toPort
+      }))
+    };
+  }
+
+  function importData(data) {
+    if (!data || !Array.isArray(data.nodes)) throw new Error('Неверный формат JSON');
+    nodes = data.nodes.map(n => ({
+      id: n.id || uid(),
+      type: n.type || 'process',
+      x: Number(n.x) || 0,
+      y: Number(n.y) || 0,
+      w: Number(n.w) || DEFAULT_W,
+      h: Number(n.h) || DEFAULT_H,
+      text: n.text || (TYPE_DEFAULTS[n.type || 'process'] || TYPE_DEFAULTS.process).text
+    }));
+    edges = (data.edges || []).map(e => ({
+      id: e.id || edgeUid(),
+      from: e.from,
+      fromPort: e.fromPort || 'bottom',
+      to: e.to,
+      toPort: e.toPort || 'top'
+    })).filter(e => nodes.some(n => n.id === e.from) && nodes.some(n => n.id === e.to));
+
+    let maxNum = 0;
+    [...nodes, ...edges].forEach(item => {
+      const m = String(item.id).match(/(\d+)$/);
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+    });
+    nextId = maxNum + 1;
+    selectedId = null;
+    selectedEdgeId = null;
+    history = [];
+    pushHistory();
+    render();
+  }
+
+  function saveJson() {
+    const blob = new Blob([JSON.stringify(exportData(), null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'flowchart-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  document.getElementById('btnSave').addEventListener('click', saveJson);
+  document.getElementById('btnLoad').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+  document.getElementById('fileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        importData(JSON.parse(reader.result));
+        document.getElementById('statusHint').textContent = 'Загружено: ' + file.name;
+      } catch (err) {
+        alert('Не удалось загрузить JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    if (nodes.length === 0) return;
+    if (!confirm('Очистить схему?')) return;
+    pushHistory();
+    nodes = [];
+    edges = [];
+    selectedId = null;
+    selectedEdgeId = null;
+    render();
+  });
+
+  document.getElementById('btnUndo').addEventListener('click', undo);
+
+  function contentBounds() {
+    if (nodes.length === 0) {
+      return { x: 0, y: 0, w: 800, h: 600 };
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + nw(n));
+      maxY = Math.max(maxY, n.y + nh(n));
+    });
+    const pad = 40;
+    return {
+      x: minX - pad,
+      y: minY - pad,
+      w: Math.max(maxX - minX + pad * 2, 200),
+      h: Math.max(maxY - minY + pad * 2, 150)
+    };
+  }
+
+  function printDiagram() {
+    if (nodes.length === 0) {
+      alert('На схеме нет блоков');
+      return;
+    }
+    selectedId = null;
+    selectedEdgeId = null;
+    render();
+
+    const prev = { ...viewBox };
+    const b = contentBounds();
+    viewBox = { x: b.x, y: b.y, w: b.w, h: b.h };
+    svg.setAttribute('viewBox', `${b.x} ${b.y} ${b.w} ${b.h}`);
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+    const afterPrint = () => {
+      viewBox = prev;
+      fitViewBox();
+      window.removeEventListener('afterprint', afterPrint);
+    };
+    window.addEventListener('afterprint', afterPrint);
+    // fallback if afterprint is delayed/missing
+    setTimeout(() => {
+      if (viewBox.x !== prev.x || viewBox.w !== prev.w) afterPrint();
+    }, 1500);
+
+    window.print();
+  }
+
+  document.getElementById('btnPrint').addEventListener('click', printDiagram);
+
+  window.addEventListener('resize', fitViewBox);
+  fitViewBox();
+  pushHistory();
+  render();
+})();
+  </script>
+</body>
+</html>

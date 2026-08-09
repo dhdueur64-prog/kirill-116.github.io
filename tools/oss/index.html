@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Проведение ОСС и подсчет бюллетеней</title>
+  <title>Авто ОСС — проведение собраний — WorkTools</title>
   <style>
     :root {
-      --bg: #f4f6f9;
+      --bg: #f0f4f8;
       --card: #ffffff;
       --primary: #1a56db;
       --primary-hover: #1e429f;
       --success: #057a55;
       --danger: #c81e1e;
       --warning: #c27803;
-      --border: #e5e7eb;
-      --text: #111827;
-      --muted: #6b7280;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
       --radius: 10px;
       --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
     }
@@ -31,15 +31,15 @@
     header {
       background: linear-gradient(135deg, #1a56db, #1e3a8a);
       color: #fff;
-      padding: 14px 24px;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,.15);
     }
-    header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; }
+    header h1 { font-size: 1.15rem; font-weight: 600; }
     header .actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn {
       display: inline-flex; align-items: center; gap: 6px;
@@ -267,12 +267,13 @@
 <body>
   <div class="app">
     <header class="no-print">
-      <h1>📋 Проведение ОСС и подсчет бюллетеней</h1>
+      <h1>📋 Авто ОСС — проведение собраний</h1>
       <div class="actions">
-        <button class="btn btn-outline" onclick="createNewDb()">Новая БД</button>
-        <button class="btn btn-outline" onclick="document.getElementById('fileInput').click()">Загрузить JSON</button>
+        <a href="../../index.html" class="btn btn-outline btn-sm">← К каталогу</a>
+        <button class="btn btn-outline btn-sm" onclick="createNewDb()">Новая БД</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('fileInput').click()">Загрузить JSON</button>
         <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJson(event)">
-        <button class="btn btn-outline" onclick="saveJson()">Сохранить JSON</button>
+        <button class="btn btn-outline btn-sm" onclick="saveJson()">Сохранить JSON</button>
       </div>
     </header>
 

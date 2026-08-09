@@ -8,8 +8,8 @@
     :root {
       --bg: #f0f4f8;
       --card: #ffffff;
-      --primary: #0f766e;
-      --primary-hover: #0d9488;
+      --primary: #1a56db;
+      --primary-hover: #1e429f;
       --success: #057a55;
       --danger: #c81e1e;
       --border: #e2e8f0;
@@ -29,14 +29,14 @@
     }
     .app { display: flex; flex-direction: column; min-height: 100vh; }
     header {
-      background: linear-gradient(135deg, #0f766e, #134e4a);
+      background: linear-gradient(135deg, #1a56db, #1e3a8a);
       color: #fff;
-      padding: 10px 16px;
+      padding: 12px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
       box-shadow: 0 2px 8px rgba(0,0,0,.15);
     }
     header h1 { font-size: 1.15rem; font-weight: 600; }
@@ -349,6 +349,7 @@
     <header>
       <h1>🏖 Генератор графика отпусков</h1>
       <div class="actions">
+        <a href="../../index.html" class="btn btn-outline btn-sm">← К каталогу</a>
         <div class="year-select">
           <span>Год:</span>
           <select id="yearSelect"></select>

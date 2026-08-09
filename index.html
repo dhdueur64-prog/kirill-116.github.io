@@ -21,6 +21,7 @@
         <a href="#tools" class="nav__link">Инструменты</a>
         <a href="#about" class="nav__link">О проекте</a>
         <a href="#privacy" class="nav__link">Приватность</a>
+        <a href="#" class="nav__link" data-open-feedback>Обратная связь</a>
       </nav>
       <button class="theme-toggle" id="themeToggle" aria-label="Переключить тему">
         <span class="theme-toggle__icon">🌙</span>
@@ -38,7 +39,7 @@
             Лёгкие веб-решения прямо в браузере. Без регистрации, без серверов — данные остаются только у вас.
           </p>
           <div class="intro__meta">
-            <span class="intro__count">9 инструментов</span>
+            <span class="intro__count">10 инструментов</span>
             <span class="intro__sep">·</span>
             <span>100% на вашей стороне</span>
           </div>
@@ -52,6 +53,7 @@
             <button class="chip" data-category="time">Планирование</button>
             <button class="chip" data-category="text">Текст</button>
             <button class="chip" data-category="tables">Таблицы</button>
+            <button class="chip" data-category="diagrams">Схемы</button>
             <button class="chip" data-category="housing">ЖКХ</button>
           </div>
         </div>
@@ -147,6 +149,23 @@
           </div>
         </div>
 
+        <!-- Category: Схемы -->
+        <div class="category" data-category="diagrams">
+          <h2 class="category__title">
+            <span class="category__icon">📐</span>
+            Схемы и диаграммы
+          </h2>
+          <div class="tools-grid">
+            <article class="tool-card" data-tags="блок схема flowchart диаграмма процесс алгоритм json">
+              <h3 class="tool-card__title">Построитель блок-схем</h3>
+              <p class="tool-card__desc">Создание блок-схем: начало, процесс, решение, ввод/вывод. Связи, редактирование, сохранение и загрузка JSON.</p>
+              <div class="tool-card__footer">
+                <a href="tools/flowchart/index.html" class="btn btn--primary btn--sm">Открыть</a>
+              </div>
+            </article>
+          </div>
+        </div>
+
         <!-- Category: ЖКХ -->
         <div class="category" data-category="housing">
           <h2 class="category__title">
@@ -179,7 +198,7 @@
           <div class="about-card">
             <div class="about-card__num">02</div>
             <h3>Никаких серверов</h3>
-            <p>Данные не уходят в облако. Нет регистрации, аккаунтов и сбора статистики.</p>
+            <p>Рабочие данные не уходят в облако. Нет регистрации и аккаунтов.</p>
           </div>
           <div class="about-card">
             <div class="about-card__num">03</div>
@@ -206,6 +225,7 @@
           </p>
           <p>
             Все инструменты выполняются локально в браузере. Данные остаются только у вас.
+            Сообщение из формы обратной связи уходит только если вы сами его отправите.
           </p>
         </div>
       </div>
@@ -219,10 +239,71 @@
         <span>WorkTools</span>
       </div>
       <p class="footer__text">Агрегатор клиентских инструментов для повседневной работы. 2026</p>
-      <p class="footer__note">Все инструменты выполняются только на стороне пользователя.</p>
+      <p class="footer__note">
+        Рабочие данные остаются у вас ·
+        <a href="#" data-open-feedback>Обратная связь</a>
+      </p>
     </div>
   </footer>
 
+  <!-- Floating feedback -->
+  <button type="button" class="feedback-fab" id="feedbackOpen" title="Обратная связь" aria-label="Обратная связь">
+    💬
+  </button>
+
+  <!-- Feedback modal -->
+  <div class="feedback-modal" id="feedbackModal" aria-hidden="true" role="dialog" aria-labelledby="feedbackTitle">
+    <div class="feedback-dialog">
+      <div class="feedback-dialog__head">
+        <h2 id="feedbackTitle">Обратная связь</h2>
+        <button type="button" class="feedback-dialog__close" id="feedbackClose" aria-label="Закрыть">×</button>
+      </div>
+      <p class="feedback-dialog__lead">Нашли ошибку или нужен новый инструмент? Напишите — это помогает развивать каталог.</p>
+      <form id="feedbackForm" class="feedback-form">
+        <label class="feedback-field">
+          <span>Тип</span>
+          <select name="kind" required>
+            <option value="bug">Ошибка / баг</option>
+            <option value="idea">Нужен новый инструмент</option>
+            <option value="improve">Улучшение существующего</option>
+            <option value="other">Другое</option>
+          </select>
+        </label>
+        <label class="feedback-field">
+          <span>Инструмент (если относится)</span>
+          <select name="tool">
+            <option value="">— не выбран —</option>
+            <option value="shifts">Калькулятор рабочих смен</option>
+            <option value="vacations">Генератор графика отпусков</option>
+            <option value="diff">Умное сравнение текстов</option>
+            <option value="wordcount">Счётчик слов и символов</option>
+            <option value="join">Соединение таблиц</option>
+            <option value="duplicates">Поиск дублей строк</option>
+            <option value="tablegen">Генератор тестовых таблиц</option>
+            <option value="transpose">Транспонировщик таблиц</option>
+            <option value="flowchart">Построитель блок-схем</option>
+            <option value="oss">Авто ОСС</option>
+            <option value="catalog">Каталог / главная</option>
+          </select>
+        </label>
+        <label class="feedback-field">
+          <span>Сообщение</span>
+          <textarea name="message" rows="5" required placeholder="Опишите ошибку или идею…"></textarea>
+        </label>
+        <label class="feedback-field">
+          <span>Контакт (необязательно)</span>
+          <input type="text" name="contact" placeholder="Email или Telegram, если нужен ответ">
+        </label>
+        <div class="feedback-actions">
+          <button type="submit" class="btn btn--primary" id="feedbackSubmit">Отправить</button>
+        </div>
+        <p class="feedback-status" id="feedbackStatus" role="status"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
+
